@@ -25,7 +25,18 @@ export async function POST(req) {
           },
           {
             type: "text",
-            text: `Look at this image of a fridge, pantry, or food items. List every individual ingredient or food item you can see. Return ONLY a JSON array of ingredient name strings, nothing else. Example: ["Eggs","Milk","Chicken","Broccoli","Garlic"]. Only include clearly visible items.`,
+            text: `You are a food ingredient scanner. Look carefully at this photo and identify ONLY the actual food ingredients and grocery items you can clearly see.
+
+Rules:
+- Only include items you can clearly identify as a food or ingredient
+- Use simple common names (e.g. "Chicken breast", "Cheddar cheese", "Bell pepper")
+- Do NOT include packaging, containers, appliances, or non-food items
+- Do NOT guess — only list what is visibly confirmed
+- If the same item appears multiple times, list it once
+- Be specific: "Ground beef" not just "meat", "Roma tomatoes" not just "vegetables"
+
+Return ONLY a valid JSON array of strings. No explanation, no markdown.
+Example: ["Eggs","Whole milk","Chicken breast","Broccoli","Garlic","Cheddar cheese"]`,
           },
         ],
       }],

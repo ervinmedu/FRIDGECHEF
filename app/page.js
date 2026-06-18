@@ -810,8 +810,17 @@ Keep it budget-friendly.`,
               padding:16, marginBottom:14,
               boxShadow:"0 2px 12px rgba(44,26,14,0.04)",
             }}>
-              <div style={{ fontSize:11, fontWeight:700, color:C.muted, textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:12 }}>
-                Your ingredients
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
+                <div style={{ fontSize:11, fontWeight:700, color:C.muted, textTransform:"uppercase", letterSpacing:"0.07em" }}>
+                  Your ingredients
+                </div>
+                {ingredients.length > 0 && (
+                  <button onClick={() => setIngredients([])} style={{
+                    background:"none", border:`1px solid ${C.border}`, borderRadius:8,
+                    padding:"3px 10px", fontSize:11, cursor:"pointer", color:C.muted,
+                    fontWeight:600,
+                  }}>Clear all</button>
+                )}
               </div>
 
               {/* Input row */}

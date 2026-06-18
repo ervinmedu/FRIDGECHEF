@@ -59,13 +59,40 @@ function parseJSON(text) {
   catch { return null; }
 }
 
+// ─── Currency config ──────────────────────────────────────────
+const CURRENCIES = {
+  PH: {
+    symbol: "₱", code: "PHP", locale: "en-PH",
+    monthly: 499, yearly: 3999,
+    monthlyId: process.env.NEXT_PUBLIC_STRIPE_MONTHLY_PRICE_ID_PHP,
+    yearlyId:  process.env.NEXT_PUBLIC_STRIPE_YEARLY_PRICE_ID_PHP,
+  },
+  DEFAULT: {
+    symbol: "$", code: "USD", locale: "en-US",
+    monthly: 8.99, yearly: 71.99,
+    monthlyId: process.env.NEXT_PUBLIC_STRIPE_MONTHLY_PRICE_ID,
+    yearlyId:  process.env.NEXT_PUBLIC_STRIPE_YEARLY_PRICE_ID,
+  },
+};
+
 // ─── Premium Modal ────────────────────────────────────────────
 function PremiumModal({ onClose, onUpgrade }) {
   const [billing, setBilling] = useState("yearly");
-  const monthly = 8.99;
-  const yearly  = 71.99;
-  const perMonth = (yearly / 12).toFixed(2);
+  const [currency, setCurrency] = useState(CURRENCIES.DEFAULT);
+
+  useEffect(() => {
+    fetch("https://ipapi.co/json/")
+      .then(r => r.json())
+      .then(data => {
+        if (data.country_code === "PH") setCurrency(CURRENCIES.PH);
+      })
+      .catch(() => {});
+  }, []);
+
+  const { symbol, monthly, yearly, monthlyId, yearlyId } = currency;
+  const perMonth = (yearly / 12).toFixed(billing === "yearly" && yearly < 100 ? 0 : 2);
   const savings  = Math.round((1 - yearly / (monthly * 12)) * 100);
+  const priceId  = billing === "yearly" ? yearlyId : monthlyId;
 
   return (
     <div style={{
@@ -124,7 +151,7 @@ function PremiumModal({ onClose, onUpgrade }) {
             background: billing==="monthly" ? "rgba(196,98,45,0.15)" : "rgba(255,255,255,0.05)",
           }}>
             <div style={{ color:"rgba(255,255,255,0.6)", fontSize:11, fontWeight:600, textTransform:"uppercase", letterSpacing:"0.08em" }}>Monthly</div>
-            <div style={{ color:"#fff", fontSize:26, fontWeight:700, marginTop:4 }}>${monthly}<span style={{ fontSize:13, fontWeight:400 }}>/mo</span></div>
+            <div style={{ color:"#fff", fontSize:26, fontWeight:700, marginTop:4 }}>{symbol}{monthly}<span style={{ fontSize:13, fontWeight:400 }}>/mo</span></div>
             <div style={{ color:"rgba(255,255,255,0.5)", fontSize:11, marginTop:4 }}>Billed monthly</div>
           </div>
           <div onClick={() => setBilling("yearly")} style={{
@@ -140,8 +167,8 @@ function PremiumModal({ onClose, onUpgrade }) {
               }}>BEST VALUE</div>
             )}
             <div style={{ color:"rgba(255,255,255,0.6)", fontSize:11, fontWeight:600, textTransform:"uppercase", letterSpacing:"0.08em" }}>Yearly</div>
-            <div style={{ color:"#fff", fontSize:26, fontWeight:700, marginTop:4 }}>${perMonth}<span style={{ fontSize:13, fontWeight:400 }}>/mo</span></div>
-            <div style={{ color:C.gold, fontSize:11, marginTop:4 }}>${yearly}/yr · Save ${(monthly*12-yearly).toFixed(2)}</div>
+            <div style={{ color:"#fff", fontSize:26, fontWeight:700, marginTop:4 }}>{symbol}{perMonth}<span style={{ fontSize:13, fontWeight:400 }}>/mo</span></div>
+            <div style={{ color:C.gold, fontSize:11, marginTop:4 }}>{symbol}{yearly}/yr · Save {savings}%</div>
           </div>
         </div>
 
@@ -192,13 +219,13 @@ function PremiumModal({ onClose, onUpgrade }) {
           ))}
         </div>
 
-        <button onClick={() => onUpgrade(billing)} style={{
+        <button onClick={() => onUpgrade(priceId)} style={{
           width:"100%", background:`linear-gradient(135deg,${C.terra},${C.terraDeep})`,
           color:"#fff", border:"none", borderRadius:14, padding:"15px",
           fontSize:15, fontWeight:700, cursor:"pointer", marginBottom:10,
           boxShadow:"0 4px 20px rgba(196,98,45,0.4)",
         }}>
-          {billing==="yearly" ? `Start free · $${perMonth}/mo after trial` : `Start free · $${monthly}/mo after trial`}
+          Start free · {symbol}{billing==="yearly" ? perMonth : monthly}/mo after trial
         </button>
         <div style={{ textAlign:"center", color:"rgba(255,255,255,0.4)", fontSize:11 }}>
           7-day free trial · Cancel anytime · No hidden fees
@@ -598,18 +625,14 @@ function FridgeChefApp() {
   }, [isPremium]);
 
   // ── Stripe checkout ───────────────────────────────────────────
-  const handleUpgrade = async (billing) => {
+  const handleUpgrade = async (priceId) => {
     if (!user) {
-      // Prompt sign in first
       signIn();
       setShowPremium(false);
       return;
     }
-    const priceId = billing === "yearly"
-      ? process.env.NEXT_PUBLIC_STRIPE_YEARLY_PRICE_ID
-      : process.env.NEXT_PUBLIC_STRIPE_MONTHLY_PRICE_ID;
     if (!priceId) {
-      alert("Stripe is not configured yet. Please add price IDs to environment variables.");
+      alert("Stripe is not configured yet.");
       return;
     }
     try {

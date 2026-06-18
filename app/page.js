@@ -76,18 +76,9 @@ const CURRENCIES = {
 };
 
 // ─── Premium Modal ────────────────────────────────────────────
-function PremiumModal({ onClose, onUpgrade }) {
+function PremiumModal({ onClose, onUpgrade, initialCurrency }) {
   const [billing, setBilling] = useState("yearly");
-  const [currency, setCurrency] = useState(CURRENCIES.DEFAULT);
-
-  useEffect(() => {
-    fetch("https://ipapi.co/json/")
-      .then(r => r.json())
-      .then(data => {
-        if (data.country_code === "PH") setCurrency(CURRENCIES.PH);
-      })
-      .catch(() => {});
-  }, []);
+  const currency = initialCurrency || CURRENCIES.DEFAULT;
 
   const { symbol, monthly, yearly, monthlyId, yearlyId } = currency;
   const perMonth = (yearly / 12).toFixed(billing === "yearly" && yearly < 100 ? 0 : 2);
@@ -412,7 +403,7 @@ function MainButton({ onClick, disabled, children }) {
 }
 
 // ─── Header ───────────────────────────────────────────────────
-function AppHeader({ user, signIn, logOut, isPremium, onOpenPremium }) {
+function AppHeader({ user, signIn, logOut, isPremium, onOpenPremium, currency = CURRENCIES.DEFAULT }) {
   const [menuOpen, setMenuOpen] = useState(false);
   return (
     <div style={{
@@ -435,7 +426,7 @@ function AppHeader({ user, signIn, logOut, isPremium, onOpenPremium }) {
             <button onClick={onOpenPremium} style={{
               background:"rgba(196,98,45,0.25)", color:C.terra, border:`1px solid ${C.terra}`,
               borderRadius:20, padding:"5px 12px", fontSize:12, fontWeight:600, cursor:"pointer",
-            }}>✨ Upgrade</button>
+            }}>✨ {currency.symbol}{currency.monthly}/mo</button>
           )}
           <div style={{ position:"relative" }}>
             <div onClick={() => setMenuOpen(!menuOpen)} style={{
@@ -553,10 +544,19 @@ function FridgeChefApp() {
   const [listening, setListening]     = useState(false);
   const [handsFree, setHandsFree]     = useState(false);
   const [voiceIngredient, setVoiceIngredient] = useState("");
+  const [currency, setCurrency]       = useState(CURRENCIES.DEFAULT);
 
   const inputRef   = useRef();
   const intervalRef = useRef();
   const recognitionRef = useRef(null);
+
+  // Detect country for currency
+  useEffect(() => {
+    fetch("https://ipapi.co/json/")
+      .then(r => r.json())
+      .then(data => { if (data.country_code === "PH") setCurrency(CURRENCIES.PH); })
+      .catch(() => {});
+  }, []);
 
   // Load from Firestore + check premium status
   useEffect(() => {
@@ -779,9 +779,10 @@ Keep it budget-friendly.`,
       {showPremium && (
         <PremiumModal
           onClose={() => setShowPremium(false)}
-          onUpgrade={(billing) => {
+          initialCurrency={currency}
+          onUpgrade={(priceId) => {
             setShowPremium(false);
-            handleUpgrade(billing);
+            handleUpgrade(priceId);
           }}
         />
       )}
@@ -789,6 +790,7 @@ Keep it budget-friendly.`,
       <AppHeader
         user={user} signIn={signIn} logOut={logOut}
         isPremium={isPremium} onOpenPremium={() => setShowPremium(true)}
+        currency={currency}
       />
 
       {/* In-app browser warning */}
@@ -1046,7 +1048,7 @@ Keep it budget-friendly.`,
                   boxShadow:"0 4px 16px rgba(196,98,45,0.35)",
                 }}>Start 7-day free trial</button>
                 <div style={{ color:"rgba(255,255,255,0.3)", fontSize:11, marginTop:10 }}>
-                  From $8.99/mo · Cancel anytime
+                  From {currency.symbol}{currency.monthly}/mo · Cancel anytime
                 </div>
               </div>
             )}

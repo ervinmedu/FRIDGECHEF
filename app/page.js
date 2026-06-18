@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { AuthProvider, useAuth } from "../components/AuthContext";
 import { getFavorites, addFavorite, removeFavorite, getMealPlan, saveMealPlan, getPremiumStatus } from "../lib/db";
+import { CURRENCIES, getCurrencyForCountry } from "../lib/currencies";
 
 // ─── Palette ──────────────────────────────────────────────────
 const C = {
@@ -60,20 +61,6 @@ function parseJSON(text) {
 }
 
 // ─── Currency config ──────────────────────────────────────────
-const CURRENCIES = {
-  PH: {
-    symbol: "₱", code: "PHP", locale: "en-PH",
-    monthly: 499, yearly: 3999,
-    monthlyId: process.env.NEXT_PUBLIC_STRIPE_MONTHLY_PRICE_ID_PHP,
-    yearlyId:  process.env.NEXT_PUBLIC_STRIPE_YEARLY_PRICE_ID_PHP,
-  },
-  DEFAULT: {
-    symbol: "$", code: "USD", locale: "en-US",
-    monthly: 8.99, yearly: 71.99,
-    monthlyId: process.env.NEXT_PUBLIC_STRIPE_MONTHLY_PRICE_ID,
-    yearlyId:  process.env.NEXT_PUBLIC_STRIPE_YEARLY_PRICE_ID,
-  },
-};
 
 // ─── Premium Modal ────────────────────────────────────────────
 function PremiumModal({ onClose, onUpgrade, initialCurrency }) {
@@ -554,7 +541,7 @@ function FridgeChefApp() {
   useEffect(() => {
     fetch("https://ipapi.co/json/")
       .then(r => r.json())
-      .then(data => { if (data.country_code === "PH") setCurrency(CURRENCIES.PH); })
+      .then(data => { if (data.country_code) setCurrency(getCurrencyForCountry(data.country_code)); })
       .catch(() => {});
   }, []);
 

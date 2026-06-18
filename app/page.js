@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { AuthProvider, useAuth } from "../components/AuthContext";
-import { getFavorites, addFavorite, removeFavorite, getMealPlan, saveMealPlan } from "../lib/db";
+import { getFavorites, addFavorite, removeFavorite, getMealPlan, saveMealPlan, getPremiumStatus } from "../lib/db";
 
 // ─── Palette ──────────────────────────────────────────────────
 const C = {
@@ -167,7 +167,7 @@ function PremiumModal({ onClose, onUpgrade }) {
           ))}
         </div>
 
-        <button onClick={onUpgrade} style={{
+        <button onClick={() => onUpgrade(billing)} style={{
           width:"100%", background:`linear-gradient(135deg,${C.terra},${C.terraDeep})`,
           color:"#fff", border:"none", borderRadius:14, padding:"15px",
           fontSize:15, fontWeight:700, cursor:"pointer", marginBottom:10,
@@ -505,11 +505,12 @@ function FridgeChefApp() {
   const intervalRef = useRef();
   const recognitionRef = useRef(null);
 
-  // Load from Firestore
+  // Load from Firestore + check premium status
   useEffect(() => {
     if (!user) return;
     getFavorites(user.uid).then(setFavorites).catch(console.error);
     getMealPlan(user.uid).then(setPlanner).catch(console.error);
+    getPremiumStatus(user.uid).then(setIsPremium).catch(console.error);
   }, [user]);
 
   // ── Ingredients ──────────────────────────────────────────────
@@ -570,23 +571,71 @@ function FridgeChefApp() {
     rec.start();
   }, [isPremium]);
 
-  // ── Photo scan (Premium — simulated) ─────────────────────────
+  // ── Stripe checkout ───────────────────────────────────────────
+  const handleUpgrade = async (billing) => {
+    if (!user) {
+      // Prompt sign in first
+      signIn();
+      setShowPremium(false);
+      return;
+    }
+    const priceId = billing === "yearly"
+      ? process.env.NEXT_PUBLIC_STRIPE_YEARLY_PRICE_ID
+      : process.env.NEXT_PUBLIC_STRIPE_MONTHLY_PRICE_ID;
+    if (!priceId) {
+      alert("Stripe is not configured yet. Please add price IDs to environment variables.");
+      return;
+    }
+    try {
+      const res = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ priceId, userId: user.uid, userEmail: user.email }),
+      });
+      const data = await res.json();
+      if (data.url) window.location.href = data.url;
+      else alert("Checkout failed: " + (data.error || "unknown error"));
+    } catch(err) {
+      alert("Checkout failed: " + err.message);
+    }
+  };
+
+  // ── Photo scan (Premium — real Claude vision) ─────────────────
+  const [scanning, setScanning] = useState(false);
   const handlePhotoScan = () => {
     if (!isPremium) { setShowPremium(true); return; }
-    const input = document.createElement("input");
-    input.type = "file"; input.accept = "image/*";
-    input.onchange = async (e) => {
+    const fileInput = document.createElement("input");
+    fileInput.type = "file"; fileInput.accept = "image/*";
+    fileInput.onchange = async (e) => {
       const file = e.target.files[0];
       if (!file) return;
-      // In production: send to Claude vision API. Here we simulate detection.
-      const simulated = ["Tomatoes","Eggs","Cheese","Onion","Bell Pepper"];
-      const toAdd = simulated.filter(s => !ingredients.map(x=>x.toLowerCase()).includes(s.toLowerCase()));
-      if (toAdd.length) {
-        setIngredients(prev => [...prev, ...toAdd]);
-        alert(`📷 Detected: ${toAdd.join(", ")}`);
+      setScanning(true);
+      try {
+        const reader = new FileReader();
+        reader.onloadend = async () => {
+          const base64 = reader.result.split(",")[1];
+          const mediaType = file.type || "image/jpeg";
+          const res = await fetch("/api/scan", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ imageBase64: base64, mediaType }),
+          });
+          const data = await res.json();
+          if (data.ingredients?.length) {
+            const toAdd = data.ingredients.filter(
+              s => !ingredients.map(x=>x.toLowerCase()).includes(s.toLowerCase())
+            );
+            if (toAdd.length) setIngredients(prev => [...prev, ...toAdd]);
+          }
+        };
+        reader.readAsDataURL(file);
+      } catch(err) {
+        console.error("Scan error:", err);
+      } finally {
+        setScanning(false);
       }
     };
-    input.click();
+    fileInput.click();
   };
 
   // ── Recipe generation ─────────────────────────────────────────
@@ -681,9 +730,9 @@ Keep it budget-friendly.`,
       {showPremium && (
         <PremiumModal
           onClose={() => setShowPremium(false)}
-          onUpgrade={() => {
-            setIsPremium(true);
+          onUpgrade={(billing) => {
             setShowPremium(false);
+            handleUpgrade(billing);
           }}
         />
       )}
@@ -803,15 +852,15 @@ Keep it budget-friendly.`,
 
               {/* Photo scan + Hands-free */}
               <div style={{ display:"flex", gap:8, marginBottom:12 }}>
-                <button onClick={handlePhotoScan} style={{
+                <button onClick={handlePhotoScan} disabled={scanning} style={{
                   flex:1, background: isPremium ? C.cream : "#f0ece8",
-                  border:`1.5px solid ${C.border}`, borderRadius:12, padding:"9px 0",
-                  fontSize:13, fontWeight:600, cursor:"pointer",
+                  border:`1.5px solid ${scanning ? C.terra : C.border}`, borderRadius:12, padding:"9px 0",
+                  fontSize:13, fontWeight:600, cursor: scanning ? "wait" : "pointer",
                   color: isPremium ? C.espresso : C.muted,
                   display:"flex", alignItems:"center", justifyContent:"center", gap:6,
                 }}>
-                  📷 Photo scan
-                  {!isPremium && <span style={{ fontSize:10 }}>🔒</span>}
+                  {scanning ? "🔍 Scanning…" : "📷 Photo scan"}
+                  {!isPremium && !scanning && <span style={{ fontSize:10 }}>🔒</span>}
                 </button>
                 <button onClick={() => {
                   if (!isPremium) { setShowPremium(true); return; }

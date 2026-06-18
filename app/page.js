@@ -167,12 +167,38 @@ function PremiumModal({ onClose, onUpgrade }) {
           ))}
         </div>
 
+        {/* Reviews */}
+        <div style={{ marginBottom:20 }}>
+          <div style={{ textAlign:"center", color:"rgba(255,255,255,0.5)", fontSize:11, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:14 }}>
+            What people say
+          </div>
+          {[
+            { name:"Sarah M.", role:"Fitness Coach", text:"The macro tracker alone is worth it. I hit my protein goal every day for 3 months.", stars:5 },
+            { name:"James K.", role:"Busy Dad",      text:"Photo scan is magic. I point at my fridge and have a meal plan in 10 seconds.", stars:5 },
+            { name:"Priya R.", role:"Budget Cook",   text:"Leftover reuse feature saves me $80 a month on groceries. No joke.", stars:5 },
+          ].map((r) => (
+            <div key={r.name} style={{
+              background:"rgba(255,255,255,0.06)", borderRadius:14, padding:"12px 14px",
+              marginBottom:10, border:"1px solid rgba(255,255,255,0.08)",
+            }}>
+              <div style={{ color:C.gold, fontSize:13, marginBottom:6 }}>★★★★★</div>
+              <div style={{ color:"rgba(255,255,255,0.85)", fontSize:13, lineHeight:1.5, marginBottom:8 }}>
+                &ldquo;{r.text}&rdquo;
+              </div>
+              <div style={{ color:"rgba(255,255,255,0.4)", fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.06em" }}>
+                {r.name} — {r.role}
+              </div>
+            </div>
+          ))}
+        </div>
+
         <button onClick={() => onUpgrade(billing)} style={{
           width:"100%", background:`linear-gradient(135deg,${C.terra},${C.terraDeep})`,
           color:"#fff", border:"none", borderRadius:14, padding:"15px",
           fontSize:15, fontWeight:700, cursor:"pointer", marginBottom:10,
+          boxShadow:"0 4px 20px rgba(196,98,45,0.4)",
         }}>
-          {billing==="yearly" ? `Start for $${perMonth}/mo · Billed $${yearly}/yr` : `Start for $${monthly}/month`}
+          {billing==="yearly" ? `Start free · $${perMonth}/mo after trial` : `Start free · $${monthly}/mo after trial`}
         </button>
         <div style={{ textAlign:"center", color:"rgba(255,255,255,0.4)", fontSize:11 }}>
           7-day free trial · Cancel anytime · No hidden fees
@@ -973,21 +999,32 @@ Keep it budget-friendly.`,
             {/* Premium upsell (if free) */}
             {!isPremium && (
               <div style={{
-                background:C.espresso, borderRadius:20, padding:"20px", marginTop:8,
+                background:C.espresso, borderRadius:20, padding:"24px 20px", marginTop:8,
                 textAlign:"center",
               }}>
+                <div style={{ color:C.gold, fontSize:18, marginBottom:6 }}>★★★★★</div>
+                <div style={{ color:"rgba(255,255,255,0.5)", fontSize:12, marginBottom:16 }}>
+                  Loved by 500+ home cooks
+                </div>
                 <div style={{ fontSize:28, marginBottom:8 }}>👑</div>
                 <div style={{ fontFamily:"'Playfair Display',serif", fontSize:17, color:C.gold, fontWeight:700, marginBottom:6 }}>
                   Unlock Premium
                 </div>
-                <div style={{ color:"rgba(255,255,255,0.7)", fontSize:13, marginBottom:14, lineHeight:1.6 }}>
-                  Voice input · Photo scan · Full macros & nutrition · Goal-based meal planning
+                <div style={{ color:"rgba(255,255,255,0.7)", fontSize:13, marginBottom:6, lineHeight:1.6 }}>
+                  Voice input · Photo scan · Full macros &amp; nutrition
+                </div>
+                <div style={{ color:"rgba(255,255,255,0.4)", fontSize:12, marginBottom:16 }}>
+                  &ldquo;Photo scan is magic. Meal plan in 10 seconds.&rdquo; — James K.
                 </div>
                 <button onClick={() => setShowPremium(true)} style={{
                   background:`linear-gradient(135deg,${C.terra},${C.terraDeep})`,
-                  color:"#fff", border:"none", borderRadius:14, padding:"12px 28px",
+                  color:"#fff", border:"none", borderRadius:14, padding:"13px 28px",
                   fontSize:14, fontWeight:700, cursor:"pointer",
-                }}>See plans · from $8.99/mo</button>
+                  boxShadow:"0 4px 16px rgba(196,98,45,0.35)",
+                }}>Start 7-day free trial</button>
+                <div style={{ color:"rgba(255,255,255,0.3)", fontSize:11, marginTop:10 }}>
+                  From $8.99/mo · Cancel anytime
+                </div>
               </div>
             )}
           </div>

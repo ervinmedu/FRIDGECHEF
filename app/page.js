@@ -22,6 +22,7 @@ async function callClaude(prompt, system) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ prompt, system }),
   });
+  if (!res.ok) throw new Error(`Server error: ${res.status}`);
   const data = await res.json();
   if (data.error) throw new Error(data.error);
   return data.text;
@@ -149,18 +150,23 @@ function OrangeButton({ onClick, disabled, children }) {
 
 // ─── Auth Banner ──────────────────────────────────────────────
 
-function AuthBanner({ user, signIn, logOut }) {
+function AuthBanner({ user, signIn, logOut, authError }) {
   if (user === undefined) return null; // loading
   if (!user) return (
     <div style={{
       background:"#fff7f0", borderTop:"1px solid #ffe0b2",
-      padding:"10px 16px", display:"flex", alignItems:"center", justifyContent:"space-between",
+      padding:"10px 16px",
     }}>
-      <span style={{ fontSize:13, color:"#777" }}>Sign in to save recipes & plans</span>
-      <button onClick={signIn} style={{
-        background:"#E65100", color:"#fff", border:"none",
-        borderRadius:10, padding:"7px 14px", fontSize:13, fontWeight:600, cursor:"pointer",
-      }}>Sign in with Google</button>
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+        <span style={{ fontSize:13, color:"#777" }}>Sign in to save recipes &amp; plans</span>
+        <button onClick={signIn} style={{
+          background:"#E65100", color:"#fff", border:"none",
+          borderRadius:10, padding:"7px 14px", fontSize:13, fontWeight:600, cursor:"pointer",
+        }}>Sign in with Google</button>
+      </div>
+      {authError && (
+        <div style={{ marginTop:6, fontSize:12, color:"#c62828" }}>{authError}</div>
+      )}
     </div>
   );
   return (
@@ -180,7 +186,7 @@ function AuthBanner({ user, signIn, logOut }) {
 // ─── Main App ─────────────────────────────────────────────────
 
 function FridgeChefApp() {
-  const { user, signIn, logOut } = useAuth();
+  const { user, signIn, logOut, authError } = useAuth();
   const [tab, setTab]                     = useState("recipes");
   const [input, setInput]                 = useState("");
   const [ingredients, setIngredients]     = useState(["Chicken","Cabbage","Garlic"]);
@@ -195,7 +201,10 @@ function FridgeChefApp() {
   const [checkedItems, setCheckedItems]   = useState({});
   const [diet, setDiet]                   = useState("any");
   const [maxTime, setMaxTime]             = useState("30");
+  const [recipeError, setRecipeError]     = useState("");
+  const [plannerError, setPlannerError]   = useState("");
   const inputRef = useRef();
+  const intervalRef = useRef();
 
   // Load from Firestore when user logs in
   useEffect(() => {
@@ -218,10 +227,10 @@ function FridgeChefApp() {
   // ── Recipe generation ─────────────────────────────────────────
   const generateRecipes = async () => {
     if (!ingredients.length) return;
-    setLoading(true); setRecipes([]);
+    setLoading(true); setRecipes([]); setRecipeError("");
     const msgs = ["Checking your fridge…","Thinking up recipes…","Almost ready!"];
     let mi = 0; setLoadingMsg(msgs[0]);
-    const iv = setInterval(() => { mi=(mi+1)%msgs.length; setLoadingMsg(msgs[mi]); }, 1500);
+    intervalRef.current = setInterval(() => { mi=(mi+1)%msgs.length; setLoadingMsg(msgs[mi]); }, 1500);
     try {
       const text = await callClaude(
         `I have: ${ingredients.join(", ")}. Diet: ${diet}. Max time: ${maxTime} min. Skill: beginner.
@@ -233,8 +242,12 @@ Budget-friendly. Use mostly the provided ingredients. Return ONLY the JSON array
       const parsed = parseJSON(text);
       if (Array.isArray(parsed)) setRecipes(parsed);
       else if (parsed) setRecipes([parsed]);
-    } catch(e) { console.error(e); }
-    clearInterval(iv); setLoading(false);
+      else setRecipeError("Couldn't parse recipes. Please try again.");
+    } catch(e) {
+      console.error(e);
+      setRecipeError("Something went wrong. Check your API key or try again.");
+    }
+    clearInterval(intervalRef.current); setLoading(false);
   };
 
   // ── Favorites ─────────────────────────────────────────────────
@@ -251,12 +264,12 @@ Budget-friendly. Use mostly the provided ingredients. Return ONLY the JSON array
   // ── Meal planner ──────────────────────────────────────────────
   const generateWeekPlan = async () => {
     if (!ingredients.length) return;
-    setPlannerLoading(true);
+    setPlannerLoading(true); setPlannerError("");
     try {
       const text = await callClaude(
         `I have: ${ingredients.join(", ")}. Diet: ${diet}.
 Create a weekly meal plan. Return ONLY this JSON (no extra text):
-{"Mon":{"Breakfast":"","Lunch":"","Dinner":""},"Tue":{...},"Wed":{...},"Thu":{...},"Fri":{...},"Sat":{...},"Sun":{...}}
+{"Mon":{"Breakfast":"","Lunch":"","Dinner":""},"Tue":{"Breakfast":"","Lunch":"","Dinner":""},"Wed":{"Breakfast":"","Lunch":"","Dinner":""},"Thu":{"Breakfast":"","Lunch":"","Dinner":""},"Fri":{"Breakfast":"","Lunch":"","Dinner":""},"Sat":{"Breakfast":"","Lunch":"","Dinner":""},"Sun":{"Breakfast":"","Lunch":"","Dinner":""}}
 Use simple beginner-friendly meal names.`,
         "You are a meal planning AI. Return ONLY valid JSON."
       );
@@ -264,8 +277,13 @@ Use simple beginner-friendly meal names.`,
       if (parsed) {
         setPlanner(parsed);
         if (user) await saveMealPlan(user.uid, parsed);
+      } else {
+        setPlannerError("Couldn't generate plan. Please try again.");
       }
-    } catch(e) { console.error(e); }
+    } catch(e) {
+      console.error(e);
+      setPlannerError("Something went wrong. Please try again.");
+    }
     setPlannerLoading(false);
   };
 
@@ -307,7 +325,7 @@ Keep it budget-friendly.`,
       </div>
 
       {/* Auth banner */}
-      <AuthBanner user={user} signIn={signIn} logOut={logOut} />
+      <AuthBanner user={user} signIn={signIn} logOut={logOut} authError={authError} />
 
       {/* Tab bar */}
       <div style={{
@@ -398,7 +416,12 @@ Keep it budget-friendly.`,
               <RecipeCard key={i} recipe={r} onSave={toggleFavorite} saved={isFav(r)} />
             ))}
 
-            {!loading && !recipes.length && (
+            {recipeError && (
+              <div style={{ background:"#FFEBEE", borderRadius:10, padding:"12px 14px", marginBottom:12, fontSize:13, color:"#c62828" }}>
+                {recipeError}
+              </div>
+            )}
+            {!loading && !recipes.length && !recipeError && (
               <div style={{ textAlign:"center", padding:"40px 0", color:"#ccc" }}>
                 <div style={{ fontSize:52 }}>🧅</div>
                 <div style={{ fontSize:14, marginTop:8 }}>Add ingredients and tap Generate</div>
@@ -416,6 +439,11 @@ Keep it budget-friendly.`,
             {!user && (
               <div style={{ background:"#FFF8E1", borderRadius:10, padding:"10px 14px", marginBottom:14, fontSize:13, color:"#795548" }}>
                 💡 Sign in to save your meal plan across devices
+              </div>
+            )}
+            {plannerError && (
+              <div style={{ background:"#FFEBEE", borderRadius:10, padding:"12px 14px", marginBottom:12, fontSize:13, color:"#c62828" }}>
+                {plannerError}
               </div>
             )}
             {Object.keys(planner).length > 0 ? (

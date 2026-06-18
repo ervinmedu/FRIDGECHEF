@@ -1,10 +1,23 @@
-// app/layout.js
+export const dynamic = "force-dynamic";
+
+import { Playfair_Display, DM_Sans } from "next/font/google";
 import "./globals.css";
 
+const playfair = Playfair_Display({
+  variable: "--font-playfair",
+  subsets: ["latin"],
+  weight: ["700"],
+});
+
+const dmSans = DM_Sans({
+  variable: "--font-dm-sans",
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+});
+
 export const metadata = {
-  title: "FridgeChef – Cook with what you have",
+  title: "FridgeChef",
   description: "AI-powered recipe generator. Type your ingredients, get recipes instantly.",
-  manifest: "/manifest.json",
 };
 
 export const viewport = {
@@ -15,15 +28,7 @@ export const viewport = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@400;500;600&display=swap"
-          rel="stylesheet"
-        />
-      </head>
+    <html lang="en" className={`${playfair.variable} ${dmSans.variable}`}>
       <body>{children}</body>
     </html>
   );

@@ -7,8 +7,12 @@ export async function POST(req) {
   try {
     const { prompt, system } = await req.json();
 
+    if (!prompt) {
+      return Response.json({ error: "prompt is required" }, { status: 400 });
+    }
+
     const message = await client.messages.create({
-      model: "claude-sonnet-4-5",
+      model: "claude-sonnet-4-6",
       max_tokens: 1024,
       system: system || "You are a helpful home chef assistant.",
       messages: [{ role: "user", content: prompt }],

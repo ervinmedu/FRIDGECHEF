@@ -474,7 +474,7 @@ function IngredientChip({ label, onRemove }) {
 
 // ─── Main App ─────────────────────────────────────────────────
 function FridgeChefApp() {
-  const { user, signIn, logOut, authError } = useAuth();
+  const { user, signIn, logOut, authError, inAppBrowser } = useAuth();
 
   // Core state
   const [tab, setTab]             = useState("recipes");
@@ -742,6 +742,43 @@ Keep it budget-friendly.`,
         isPremium={isPremium} onOpenPremium={() => setShowPremium(true)}
       />
 
+      {/* In-app browser warning */}
+      {inAppBrowser && (
+        <div style={{
+          margin:"12px 16px 0", background:"#FFF8E1", borderRadius:14,
+          border:"1px solid #FFE082", padding:"14px 16px",
+        }}>
+          <div style={{ fontSize:14, fontWeight:700, color:"#E65100", marginBottom:4 }}>
+            🌐 Open in Chrome or Safari to sign in
+          </div>
+          <div style={{ fontSize:12, color:"#795548", lineHeight:1.5, marginBottom:10 }}>
+            Google sign-in is blocked inside apps like Facebook and Instagram. Copy the link and open it in your browser.
+          </div>
+          <button
+            onClick={() => {
+              const url = window.location.href;
+              if (navigator.clipboard) {
+                navigator.clipboard.writeText(url).then(() => alert("Link copied! Open it in Chrome or Safari."));
+              }
+            }}
+            style={{
+              background:"#E65100", color:"#fff", border:"none",
+              borderRadius:10, padding:"8px 16px", fontSize:13, fontWeight:600, cursor:"pointer",
+            }}
+          >Copy link to open in browser</button>
+        </div>
+      )}
+
+      {/* In-app browser sign-in error */}
+      {authError === "in-app-browser" && (
+        <div style={{
+          margin:"8px 16px 0", background:"#FFF8E1", borderRadius:12,
+          border:"1px solid #FFE082", padding:"12px 14px", fontSize:13, color:"#795548",
+        }}>
+          ⚠️ Google sign-in doesn&apos;t work inside this browser. Open <strong>fridgechef-sable-alpha.vercel.app</strong> in Chrome or Safari.
+        </div>
+      )}
+
       {/* Auth notice */}
       {!user && (
         <div style={{
@@ -759,7 +796,7 @@ Keep it budget-friendly.`,
           }}>Sign in</button>
         </div>
       )}
-      {authError && (
+      {authError && authError !== "in-app-browser" && (
         <div style={{ margin:"8px 16px 0", background:C.errorBg, borderRadius:10, padding:"10px 14px", fontSize:13, color:C.errorText }}>
           {authError}
         </div>

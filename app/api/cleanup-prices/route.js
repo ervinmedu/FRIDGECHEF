@@ -53,5 +53,10 @@ export async function GET(req) {
     }
   }
 
-  return Response.json({ archived, kept: skipped });
+  // Also set the product's default price to the new USD monthly price
+  await stripe.products.update(PRODUCT, {
+    default_price: "price_1TjpqxC8OqGUQkNwFNSz3O5K",
+  });
+
+  return Response.json({ archived, kept: skipped, defaultPriceUpdated: true });
 }

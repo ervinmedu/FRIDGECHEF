@@ -1,5 +1,3 @@
-export const dynamic = "force-dynamic";
-
 import { Playfair_Display, DM_Sans } from "next/font/google";
 import "./globals.css";
 

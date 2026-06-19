@@ -537,11 +537,26 @@ function FridgeChefApp() {
   const intervalRef = useRef();
   const recognitionRef = useRef(null);
 
-  // Detect country for currency
+  // Detect country for currency (cached in localStorage for 24 h)
   useEffect(() => {
+    try {
+      const cached = localStorage.getItem("fc_country");
+      const cachedAt = localStorage.getItem("fc_country_at");
+      if (cached && cachedAt && Date.now() - Number(cachedAt) < 86400000) {
+        setCurrency(getCurrencyForCountry(cached)); return;
+      }
+    } catch {}
     fetch("https://ipapi.co/json/")
       .then(r => r.json())
-      .then(data => { if (data.country_code) setCurrency(getCurrencyForCountry(data.country_code)); })
+      .then(data => {
+        if (data.country_code) {
+          setCurrency(getCurrencyForCountry(data.country_code));
+          try {
+            localStorage.setItem("fc_country", data.country_code);
+            localStorage.setItem("fc_country_at", String(Date.now()));
+          } catch {}
+        }
+      })
       .catch(() => {});
   }, []);
 
@@ -611,6 +626,9 @@ function FridgeChefApp() {
     rec.start();
   }, [isPremium]);
 
+  // Stop voice recognition on unmount
+  useEffect(() => () => { recognitionRef.current?.stop(); }, []);
+
   // ── Stripe checkout ───────────────────────────────────────────
   const handleUpgrade = async (priceId) => {
     if (!user) {
@@ -646,9 +664,9 @@ function FridgeChefApp() {
       const file = e.target.files[0];
       if (!file) return;
       setScanning(true);
-      try {
-        const reader = new FileReader();
-        reader.onloadend = async () => {
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        try {
           const base64 = reader.result.split(",")[1];
           const mediaType = file.type || "image/jpeg";
           const res = await fetch("/api/scan", {
@@ -657,19 +675,21 @@ function FridgeChefApp() {
             body: JSON.stringify({ imageBase64: base64, mediaType }),
           });
           const data = await res.json();
+          if (!res.ok) { alert("Scan failed: " + (data.error || "unknown error")); return; }
           if (data.ingredients?.length) {
             const toAdd = data.ingredients.filter(
               s => !ingredients.map(x=>x.toLowerCase()).includes(s.toLowerCase())
             );
             if (toAdd.length) setIngredients(prev => [...prev, ...toAdd]);
           }
-        };
-        reader.readAsDataURL(file);
-      } catch(err) {
-        console.error("Scan error:", err);
-      } finally {
-        setScanning(false);
-      }
+        } catch(err) {
+          console.error("Scan error:", err);
+          alert("Scan failed. Please try again.");
+        } finally {
+          setScanning(false);
+        }
+      };
+      reader.readAsDataURL(file);
     };
     fileInput.click();
   };
@@ -699,8 +719,9 @@ Budget-friendly. Use provided ingredients. Return ONLY the JSON array, no markdo
       else setRecipeError("Couldn't parse recipes — please try again.");
     } catch(e) {
       setRecipeError("Something went wrong. Check connection and try again.");
+    } finally {
+      clearInterval(intervalRef.current); setLoading(false);
     }
-    clearInterval(intervalRef.current); setLoading(false);
   };
 
   // ── Favorites ─────────────────────────────────────────────────
@@ -709,7 +730,12 @@ Budget-friendly. Use provided ingredients. Return ONLY the JSON array, no markdo
     const next = exists ? favorites.filter(r=>r.name!==recipe.name) : [...favorites, recipe];
     setFavorites(next);
     if (user) {
-      exists ? await removeFavorite(user.uid, recipe) : await addFavorite(user.uid, recipe);
+      try {
+        exists ? await removeFavorite(user.uid, recipe) : await addFavorite(user.uid, recipe);
+      } catch(err) {
+        console.error("Favorite sync error:", err);
+        setFavorites(favorites); // revert on error
+      }
     }
   };
   const isFav = (r) => favorites.some(f => f.name === r.name);
@@ -753,7 +779,10 @@ Keep it budget-friendly.`,
       );
       const parsed = parseJSON(text);
       if (parsed) setGroceryList(parsed);
-    } catch(e) { console.error(e); }
+    } catch(e) {
+      console.error(e);
+      alert("Couldn't generate grocery list. Please try again.");
+    }
     setGroceryLoading(false);
   };
 

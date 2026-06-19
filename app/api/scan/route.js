@@ -1,12 +1,24 @@
 import Anthropic from "@anthropic-ai/sdk";
 
+if (!process.env.ANTHROPIC_API_KEY) throw new Error("Missing ANTHROPIC_API_KEY");
+
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
 
 export async function POST(req) {
   try {
     const { imageBase64, mediaType } = await req.json();
+
     if (!imageBase64) {
       return Response.json({ error: "No image provided" }, { status: 400 });
+    }
+    if (!ALLOWED_TYPES.includes(mediaType)) {
+      return Response.json({ error: "Invalid image type" }, { status: 400 });
+    }
+    if (Buffer.byteLength(imageBase64, "base64") > MAX_BYTES) {
+      return Response.json({ error: "Image too large (max 5 MB)" }, { status: 400 });
     }
 
     const message = await client.messages.create({
@@ -19,7 +31,7 @@ export async function POST(req) {
             type: "image",
             source: {
               type: "base64",
-              media_type: mediaType || "image/jpeg",
+              media_type: mediaType,
               data: imageBase64,
             },
           },
@@ -42,12 +54,12 @@ Example: ["Eggs","Whole milk","Chicken breast","Broccoli","Garlic","Cheddar chee
       }],
     });
 
-    const text = message.content[0].text;
+    const block = message.content.find(b => b.type === "text");
+    const text = block?.text ?? "";
     let ingredients;
     try {
       ingredients = JSON.parse(text.replace(/```json|```/g, "").trim());
     } catch {
-      // Fallback: extract comma-separated items if JSON parsing fails
       ingredients = text.replace(/[\[\]"]/g, "").split(",").map(s => s.trim()).filter(Boolean);
     }
 

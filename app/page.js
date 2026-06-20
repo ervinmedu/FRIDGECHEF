@@ -8,6 +8,18 @@ import { getFavorites, addFavorite, removeFavorite, getMealPlan, saveMealPlan } 
 
 const TABS = ["recipes", "planner", "favorites", "grocery"];
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const CUISINES = [
+  { value: "any",      label: "🌍 Any cuisine" },
+  { value: "filipino", label: "🇵🇭 Filipino" },
+  { value: "indian",   label: "🇮🇳 Indian" },
+  { value: "korean",   label: "🇰🇷 Korean" },
+  { value: "chinese",  label: "🇨🇳 Chinese" },
+  { value: "japanese", label: "🇯🇵 Japanese" },
+  { value: "american", label: "🇺🇸 American" },
+  { value: "italian",  label: "🇮🇹 Italian" },
+  { value: "mexican",  label: "🇲🇽 Mexican" },
+  { value: "thai",     label: "🇹🇭 Thai" },
+];
 const DAY_NAMES = { Mon:"Monday", Tue:"Tuesday", Wed:"Wednesday", Thu:"Thursday", Fri:"Friday", Sat:"Saturday", Sun:"Sunday" };
 const MEALS = ["Breakfast", "Lunch", "Dinner"];
 const EMOJI = { recipes:"🍳", planner:"📅", favorites:"❤️", grocery:"🛒" };
@@ -201,6 +213,7 @@ function FridgeChefApp() {
   const [checkedItems, setCheckedItems]   = useState({});
   const [diet, setDiet]                   = useState("any");
   const [maxTime, setMaxTime]             = useState("30");
+  const [cuisine, setCuisine]             = useState("any");
   const [recipeError, setRecipeError]     = useState("");
   const [plannerError, setPlannerError]   = useState("");
   const inputRef = useRef();
@@ -232,8 +245,11 @@ function FridgeChefApp() {
     let mi = 0; setLoadingMsg(msgs[0]);
     intervalRef.current = setInterval(() => { mi=(mi+1)%msgs.length; setLoadingMsg(msgs[mi]); }, 1500);
     try {
+      const cuisineInstruction = cuisine !== "any"
+        ? `Cuisine: ${cuisine} — recipes MUST be authentic ${cuisine} dishes (use real dish names from that cuisine).`
+        : "Cuisine: any.";
       const text = await callClaude(
-        `I have: ${ingredients.join(", ")}. Diet: ${diet}. Max time: ${maxTime} min. Skill: beginner.
+        `I have: ${ingredients.join(", ")}. Diet: ${diet}. Max time: ${maxTime} min. Skill: beginner. ${cuisineInstruction}
 Return a JSON array of exactly 3 recipes. Each item:
 {"name":"","prepTime":"","difficulty":"Easy","ingredients":[],"steps":[],"missingIngredients":[],"substitutions":""}
 Budget-friendly. Use mostly the provided ingredients. Return ONLY the JSON array.`,
@@ -266,8 +282,9 @@ Budget-friendly. Use mostly the provided ingredients. Return ONLY the JSON array
     if (!ingredients.length) return;
     setPlannerLoading(true); setPlannerError("");
     try {
+      const cuisineInstruction = cuisine !== "any" ? ` Cuisine: ${cuisine} dishes only.` : "";
       const text = await callClaude(
-        `I have: ${ingredients.join(", ")}. Diet: ${diet}.
+        `I have: ${ingredients.join(", ")}. Diet: ${diet}.${cuisineInstruction}
 Create a weekly meal plan. Return ONLY this JSON (no extra text):
 {"Mon":{"Breakfast":"","Lunch":"","Dinner":""},"Tue":{"Breakfast":"","Lunch":"","Dinner":""},"Wed":{"Breakfast":"","Lunch":"","Dinner":""},"Thu":{"Breakfast":"","Lunch":"","Dinner":""},"Fri":{"Breakfast":"","Lunch":"","Dinner":""},"Sat":{"Breakfast":"","Lunch":"","Dinner":""},"Sun":{"Breakfast":"","Lunch":"","Dinner":""}}
 Use simple beginner-friendly meal names.`,
@@ -354,7 +371,7 @@ Keep it budget-friendly.`,
         {tab === "recipes" && (
           <div>
             {/* Filters */}
-            <div style={{ display:"flex", gap:8, marginBottom:14 }}>
+            <div style={{ display:"flex", gap:8, marginBottom:8 }}>
               <select value={diet} onChange={e=>setDiet(e.target.value)} style={{
                 flex:1, borderRadius:10, border:"1px solid #e8d5b7", padding:"8px 10px",
                 fontSize:13, background:"#fff", color:"#333", outline:"none",
@@ -375,6 +392,23 @@ Keep it budget-friendly.`,
                 <option value="60">🕐 Under 1 hour</option>
                 <option value="120">🍲 Any time</option>
               </select>
+            </div>
+            {/* Cuisine selector */}
+            <div style={{ marginBottom:14 }}>
+              <div style={{ fontSize:11, fontWeight:700, color:"#E65100", textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:6 }}>
+                Cuisine
+              </div>
+              <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+                {CUISINES.map(c => (
+                  <button key={c.value} onClick={() => setCuisine(c.value)} style={{
+                    border: cuisine === c.value ? "2px solid #E65100" : "1px solid #e8d5b7",
+                    borderRadius:20, padding:"5px 12px", fontSize:12, fontWeight:600,
+                    background: cuisine === c.value ? "#FFF3E0" : "#fff",
+                    color: cuisine === c.value ? "#E65100" : "#777",
+                    cursor:"pointer", transition:"all 0.15s",
+                  }}>{c.label}</button>
+                ))}
+              </div>
             </div>
 
             {/* Ingredient box */}

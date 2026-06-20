@@ -1059,7 +1059,7 @@ function FridgeChefApp() {
     if (!user) return;
     getFavorites(user.uid).then(setFavorites).catch(console.error);
     getMealPlan(user.uid).then(setPlanner).catch(console.error);
-    getUserStatus(user.uid).then(s => {
+    getUserStatus(user.uid, user.email).then(s => {
       // Dev override: localStorage.setItem('fc_trial_test', '6') = simulate day 6
       const testDay = parseInt(localStorage.getItem("fc_trial_test") || "0");
       if (testDay > 0 && !s.isPremium) {

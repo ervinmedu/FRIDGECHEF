@@ -338,18 +338,23 @@ function RecipeCard({ recipe, onSave, saved, isPremium, onUpgrade }) {
             <span>· {recipe.difficulty || "Easy"}</span>
           </div>
           {isPremium && nutrition && (
-            <div style={{ display:"flex", gap:8, marginTop:8, flexWrap:"wrap" }}>
-              {[
-                { label:"cal", value:nutrition.calories, bg:"#FFF3E0", color:C.terra },
-                { label:"prot", value:`${nutrition.protein}g`, bg:"#E8F5E9", color:"#2E7D32" },
-                { label:"carbs", value:`${nutrition.carbs}g`, bg:"#E3F2FD", color:"#1565C0" },
-                { label:"fat", value:`${nutrition.fat}g`, bg:"#F3E5F5", color:"#6A1B9A" },
-              ].map(n => (
-                <div key={n.label} style={{
-                  background:n.bg, borderRadius:8, padding:"3px 8px",
-                  fontSize:11, fontWeight:700, color:n.color,
-                }}>{n.value} <span style={{ fontWeight:400, opacity:0.7 }}>{n.label}</span></div>
-              ))}
+            <div style={{ marginTop:8 }}>
+              <div style={{ fontSize:10, color:C.muted, fontWeight:500, marginBottom:4 }}>
+                per serving · {nutrition.servings || 2} serving{(nutrition.servings || 2) !== 1 ? "s" : ""} total
+              </div>
+              <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+                {[
+                  { label:"cal", value:nutrition.calories, bg:"#FFF3E0", color:C.terra },
+                  { label:"prot", value:`${nutrition.protein}g`, bg:"#E8F5E9", color:"#2E7D32" },
+                  { label:"carbs", value:`${nutrition.carbs}g`, bg:"#E3F2FD", color:"#1565C0" },
+                  { label:"fat", value:`${nutrition.fat}g`, bg:"#F3E5F5", color:"#6A1B9A" },
+                ].map(n => (
+                  <div key={n.label} style={{
+                    background:n.bg, borderRadius:8, padding:"3px 8px",
+                    fontSize:11, fontWeight:700, color:n.color,
+                  }}>{n.value} <span style={{ fontWeight:400, opacity:0.7 }}>{n.label}</span></div>
+                ))}
+              </div>
             </div>
           )}
           {!isPremium && (
@@ -377,8 +382,13 @@ function RecipeCard({ recipe, onSave, saved, isPremium, onUpgrade }) {
               background:C.cream, borderRadius:12, padding:"12px 14px", margin:"14px 0 4px",
               border:`1px solid ${C.border}`,
             }}>
-              <div style={{ fontSize:12, fontWeight:700, color:C.terra, textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:10 }}>
-                Nutrition (per serving)
+              <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between", marginBottom:10 }}>
+                <div style={{ fontSize:12, fontWeight:700, color:C.terra, textTransform:"uppercase", letterSpacing:"0.06em" }}>
+                  Nutrition per serving
+                </div>
+                <div style={{ fontSize:11, color:C.muted, fontWeight:500 }}>
+                  🍽 {nutrition.servings || 2} serving{(nutrition.servings || 2) !== 1 ? "s" : ""} total
+                </div>
               </div>
               <NutritionBar label="Calories" value={nutrition.calories} unit=" kcal" color={C.terra} max={800} />
               <NutritionBar label="Protein"  value={nutrition.protein}  unit="g"    color="#4CAF50" max={60}  />
@@ -1223,7 +1233,7 @@ function FridgeChefApp() {
     intervalRef.current = setInterval(() => { mi=(mi+1)%msgs.length; setLoadingMsg(msgs[mi]); }, 1500);
     try {
       const nutritionRequest = isNutritionUnlocked
-        ? `Include "nutrition":{"calories":0,"protein":0,"carbs":0,"fat":0} per serving for each recipe.`
+        ? `Include "nutrition":{"calories":0,"protein":0,"carbs":0,"fat":0,"servings":2} for each recipe. calories/protein/carbs/fat must be PER SERVING values. servings is the number of servings the recipe makes.`
         : "";
       const cuisineInstruction = cuisine !== "any"
         ? `Cuisine: ${cuisine} — ALL recipes MUST be authentic ${cuisine} dishes with real ${cuisine} dish names.`
@@ -1231,7 +1241,7 @@ function FridgeChefApp() {
       const text = await callClaude(
         `I have: ${ingredients.join(", ")}. Diet: ${diet}. Max time: ${maxTime} min. ${cuisineInstruction}
 Return a JSON array of exactly 3 recipes. Each item MUST follow this format exactly:
-{"name":"","prepTime":"","difficulty":"Easy","ingredients":[],"steps":[],"missingIngredients":[],"substitutions":"${isNutritionUnlocked ? `","nutrition":{"calories":0,"protein":0,"carbs":0,"fat":0}` : '"'}
+{"name":"","prepTime":"","difficulty":"Easy","ingredients":[],"steps":[],"missingIngredients":[],"substitutions":"${isNutritionUnlocked ? `","nutrition":{"calories":0,"protein":0,"carbs":0,"fat":0,"servings":2}` : '"'}
 ${nutritionRequest}
 Budget-friendly. Use provided ingredients. Return ONLY the JSON array, no markdown.`,
         "You are a home chef AI. Return ONLY valid JSON with no markdown or explanation."

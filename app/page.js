@@ -1296,16 +1296,6 @@ Keep it budget-friendly.`,
 
   // ── Render ────────────────────────────────────────────────────
 
-  // Hard paywall — trial expired, not paying
-  if (trialExpired) {
-    return (
-      <HardPaywall
-        currency={currency}
-        onUpgrade={(priceId) => handleUpgrade(priceId)}
-      />
-    );
-  }
-
   return (
     <div style={{ maxWidth:430, margin:"0 auto", minHeight:"100vh", background:C.cream, paddingBottom:30 }}>
 
@@ -1315,6 +1305,20 @@ Keep it budget-friendly.`,
           daysLeft={trialDaysLeft}
           onUpgrade={() => setShowPremium(true)}
         />
+      )}
+
+      {/* Soft banner when trial has expired */}
+      {trialExpired && (
+        <div style={{
+          background: C.espresso, color:"#fff", padding:"10px 16px",
+          display:"flex", alignItems:"center", justifyContent:"space-between", gap:10,
+        }}>
+          <span style={{ fontSize:13, fontWeight:600 }}>👑 Your free trial ended — upgrade to unlock premium features</span>
+          <button onClick={() => setShowPremium(true)} style={{
+            background: C.terra, color:"#fff", border:"none",
+            borderRadius:20, padding:"6px 14px", fontSize:12, fontWeight:700, cursor:"pointer", flexShrink:0,
+          }}>Upgrade</button>
+        </div>
       )}
 
       {showPremium && (

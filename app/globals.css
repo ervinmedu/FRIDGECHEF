@@ -6,6 +6,21 @@
 
 body {
   font-family: var(--font-dm-sans), -apple-system, BlinkMacSystemFont, sans-serif;
-  background: #FDFAF6;
+  background: #FDF6EE;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+button:focus-visible {
+  outline: 2px solid #C4622D;
+  outline-offset: 2px;
+}
+
+input:focus {
+  outline: none;
 }

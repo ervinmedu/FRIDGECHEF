@@ -41,6 +41,18 @@ const TIME_OPTIONS = [
   { value:"60",  label:"1 hour",  icon:"⏱" },
   { value:"120", label:"Any",     icon:"🍲" },
 ];
+const CUISINE_OPTIONS = [
+  { value:"any",      label:"🌍 Any" },
+  { value:"filipino", label:"🇵🇭 Filipino" },
+  { value:"indian",   label:"🇮🇳 Indian" },
+  { value:"korean",   label:"🇰🇷 Korean" },
+  { value:"chinese",  label:"🇨🇳 Chinese" },
+  { value:"japanese", label:"🇯🇵 Japanese" },
+  { value:"american", label:"🇺🇸 American" },
+  { value:"italian",  label:"🇮🇹 Italian" },
+  { value:"mexican",  label:"🇲🇽 Mexican" },
+  { value:"thai",     label:"🇹🇭 Thai" },
+];
 
 // ─── API helper ───────────────────────────────────────────────
 async function callClaude(prompt, system) {
@@ -522,6 +534,7 @@ function FridgeChefApp() {
   const [checkedItems, setCheckedItems] = useState({});
   const [diet, setDiet]           = useState("any");
   const [maxTime, setMaxTime]     = useState("30");
+  const [cuisine, setCuisine]     = useState("any");
   const [recipeError, setRecipeError] = useState("");
   const [plannerError, setPlannerError] = useState("");
 
@@ -705,8 +718,11 @@ function FridgeChefApp() {
       const nutritionRequest = isPremium
         ? `Include "nutrition":{"calories":0,"protein":0,"carbs":0,"fat":0} per serving for each recipe.`
         : "";
+      const cuisineInstruction = cuisine !== "any"
+        ? `Cuisine: ${cuisine} — ALL recipes MUST be authentic ${cuisine} dishes with real ${cuisine} dish names.`
+        : "";
       const text = await callClaude(
-        `I have: ${ingredients.join(", ")}. Diet: ${diet}. Max time: ${maxTime} min.
+        `I have: ${ingredients.join(", ")}. Diet: ${diet}. Max time: ${maxTime} min. ${cuisineInstruction}
 Return a JSON array of exactly 3 recipes. Each item MUST follow this format exactly:
 {"name":"","prepTime":"","difficulty":"Easy","ingredients":[],"steps":[],"missingIngredients":[],"substitutions":"${isPremium ? `","nutrition":{"calories":0,"protein":0,"carbs":0,"fat":0}` : '"'}
 ${nutritionRequest}
@@ -745,8 +761,9 @@ Budget-friendly. Use provided ingredients. Return ONLY the JSON array, no markdo
     if (!ingredients.length) return;
     setPlannerLoading(true); setPlannerError("");
     try {
+      const cuisinePlan = cuisine !== "any" ? ` Cuisine: ${cuisine} dishes only.` : "";
       const text = await callClaude(
-        `I have: ${ingredients.join(", ")}. Diet: ${diet}.
+        `I have: ${ingredients.join(", ")}. Diet: ${diet}.${cuisinePlan}
 Create a weekly meal plan. Return ONLY this JSON (no extra text):
 {"Mon":{"Breakfast":"","Lunch":"","Dinner":""},"Tue":{"Breakfast":"","Lunch":"","Dinner":""},"Wed":{"Breakfast":"","Lunch":"","Dinner":""},"Thu":{"Breakfast":"","Lunch":"","Dinner":""},"Fri":{"Breakfast":"","Lunch":"","Dinner":""},"Sat":{"Breakfast":"","Lunch":"","Dinner":""},"Sun":{"Breakfast":"","Lunch":"","Dinner":""}}
 Use simple beginner-friendly meal names.`,
@@ -904,6 +921,22 @@ Keep it budget-friendly.`,
                     color: maxTime===t.value ? C.terra : C.muted,
                     cursor:"pointer",
                   }}>{t.icon} {t.label}</button>
+                ))}
+              </div>
+            </div>
+
+            {/* Cuisine filter chips */}
+            <div style={{ marginBottom:16 }}>
+              <div style={{ fontSize:11, fontWeight:700, color:C.muted, textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:8 }}>Cuisine</div>
+              <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+                {CUISINE_OPTIONS.map(c => (
+                  <button key={c.value} onClick={() => setCuisine(c.value)} style={{
+                    border:`1.5px solid ${cuisine===c.value ? C.terra : C.border}`,
+                    borderRadius:20, padding:"6px 12px", fontSize:12, fontWeight:600,
+                    background: cuisine===c.value ? C.terraLight : C.cardBg,
+                    color: cuisine===c.value ? C.terra : C.muted,
+                    cursor:"pointer",
+                  }}>{c.label}</button>
                 ))}
               </div>
             </div>

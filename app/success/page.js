@@ -6,7 +6,7 @@ import { doc, setDoc } from "firebase/firestore";
 
 function SuccessContent() {
   const { user } = useAuth();
-  const [status, setStatus] = useState("activating");
+  const [status, setStatus] = useState("ready");
   const written = useRef(false);
 
   // Write premium to Firestore as soon as we have a user — background, don't block UI

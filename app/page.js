@@ -583,9 +583,251 @@ function IngredientChip({ label, onRemove }) {
   );
 }
 
+// ─── Onboarding ───────────────────────────────────────────────
+const OB_STEPS = [
+  {
+    id:"goal", emoji:"🎯",
+    headline:"What's your #1 goal\nwith FridgeChef?",
+    sub:"We'll personalise every recipe to match.",
+    multi: false,
+    options:[
+      { icon:"🥗", label:"Eat healthier" },
+      { icon:"💰", label:"Save money on groceries" },
+      { icon:"🗑️", label:"Stop wasting food" },
+      { icon:"⏰", label:"Cook faster meals" },
+      { icon:"🎓", label:"Level up my cooking" },
+      { icon:"🍽️", label:"Just explore recipes" },
+    ],
+  },
+  {
+    id:"who", emoji:"👨‍👩‍👧",
+    headline:"Who are you\ncooking for?",
+    sub:"Portions and complexity adapt to your household.",
+    multi: false,
+    options:[
+      { icon:"🧍", label:"Just me" },
+      { icon:"👫", label:"Me & partner" },
+      { icon:"👨‍👩‍👦", label:"Family with kids" },
+      { icon:"🏠", label:"Roommates" },
+      { icon:"🍱", label:"Meal prepping" },
+    ],
+  },
+  {
+    id:"skill", emoji:"👨‍🍳",
+    headline:"How confident are\nyou in the kitchen?",
+    sub:"We'll match recipe complexity to your level.",
+    multi: false,
+    options:[
+      { icon:"🔰", label:"Beginner – I follow recipes closely" },
+      { icon:"🍳", label:"Intermediate – I'm comfortable" },
+      { icon:"⭐", label:"Advanced – I love to improvise" },
+    ],
+  },
+  {
+    id:"time", emoji:"⏱️",
+    headline:"How much time do\nyou usually have?",
+    sub:"We'll filter recipes to fit your schedule.",
+    multi: false,
+    options:[
+      { icon:"⚡", label:"Under 15 minutes" },
+      { icon:"🕐", label:"15–30 minutes" },
+      { icon:"⏱️", label:"30–60 minutes" },
+      { icon:"🍲", label:"I love slow cooking" },
+    ],
+  },
+  {
+    id:"diet", emoji:"🌿",
+    headline:"Any dietary needs\nor preferences?",
+    sub:"Pick all that apply — recipes will match.",
+    multi: true,
+    options:[
+      { icon:"🍽️", label:"No restrictions" },
+      { icon:"🥦", label:"Vegetarian" },
+      { icon:"🌱", label:"Vegan" },
+      { icon:"☪️", label:"Halal" },
+      { icon:"💪", label:"Low-carb" },
+      { icon:"🌾", label:"Gluten-free" },
+    ],
+  },
+  {
+    id:"struggle", emoji:"😤",
+    headline:"What's your biggest\nkitchen struggle?",
+    sub:"We'll focus on solving this for you first.",
+    multi: false,
+    options:[
+      { icon:"💡", label:"No recipe inspiration" },
+      { icon:"🗑️", label:"Ingredients go to waste" },
+      { icon:"⏰", label:"Never enough time" },
+      { icon:"🥗", label:"Eating healthy feels hard" },
+      { icon:"💸", label:"Groceries cost too much" },
+    ],
+  },
+];
+
+function Onboarding({ onDone }) {
+  const [step, setStep]       = useState(0);
+  const [answers, setAnswers] = useState({});
+  const [selected, setSelected] = useState([]);
+  const [animating, setAnimating] = useState(false);
+  const [finishing, setFinishing] = useState(false);
+  const [finishPct, setFinishPct] = useState(0);
+
+  const s = OB_STEPS[step];
+  const isLast = step === OB_STEPS.length - 1;
+
+  function pick(label) {
+    if (s.multi) {
+      if (label === "No restrictions") { setSelected(["No restrictions"]); return; }
+      setSelected(prev => {
+        const without = prev.filter(x => x !== "No restrictions");
+        return without.includes(label) ? without.filter(x => x !== label) : [...without, label];
+      });
+    } else {
+      setSelected([label]);
+    }
+  }
+
+  function next() {
+    if (!selected.length) return;
+    const newAnswers = { ...answers, [s.id]: s.multi ? selected : selected[0] };
+    setAnswers(newAnswers);
+
+    if (isLast) {
+      // Save to localStorage and launch finishing animation
+      localStorage.setItem("fc_onboarded", "1");
+      localStorage.setItem("fc_prefs", JSON.stringify(newAnswers));
+      setFinishing(true);
+      let pct = 0;
+      const iv = setInterval(() => {
+        pct += 2;
+        setFinishPct(pct);
+        if (pct >= 100) { clearInterval(iv); setTimeout(() => onDone(newAnswers), 400); }
+      }, 30);
+      return;
+    }
+
+    setAnimating(true);
+    setTimeout(() => {
+      setStep(s => s + 1);
+      setSelected([]);
+      setAnimating(false);
+    }, 220);
+  }
+
+  const progress = (step / OB_STEPS.length) * 100;
+
+  if (finishing) return (
+    <div style={{
+      position:"fixed", inset:0, background:C.espresso,
+      display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
+      padding:32, zIndex:9999,
+    }}>
+      <div style={{ fontSize:56, marginBottom:24 }}>🍳</div>
+      <div style={{ fontFamily:"'Playfair Display',serif", fontSize:26, fontWeight:700, color:"#fff", marginBottom:8, textAlign:"center" }}>
+        Building your kitchen
+      </div>
+      <div style={{ color:"rgba(255,255,255,0.6)", fontSize:14, marginBottom:40 }}>
+        Personalising recipes just for you…
+      </div>
+      <div style={{ width:240, height:6, background:"rgba(255,255,255,0.15)", borderRadius:99 }}>
+        <div style={{ height:"100%", width:`${finishPct}%`, background:C.terra, borderRadius:99, transition:"width 0.03s linear" }} />
+      </div>
+      <div style={{ color:C.terra, fontSize:13, fontWeight:600, marginTop:14 }}>{finishPct}%</div>
+      <div style={{ marginTop:40, color:"rgba(255,255,255,0.4)", fontSize:12, textAlign:"center", lineHeight:1.8 }}>
+        {finishPct < 30 && "Analysing your goals…"}
+        {finishPct >= 30 && finishPct < 60 && "Tuning recipe difficulty…"}
+        {finishPct >= 60 && finishPct < 85 && "Applying dietary preferences…"}
+        {finishPct >= 85 && "Almost ready…"}
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{
+      position:"fixed", inset:0, background:C.cream, zIndex:9999,
+      display:"flex", flexDirection:"column", overflowY:"auto",
+    }}>
+      {/* Progress bar */}
+      <div style={{ height:4, background:C.border, flexShrink:0 }}>
+        <div style={{ height:"100%", width:`${progress}%`, background:C.terra, transition:"width 0.35s ease" }} />
+      </div>
+
+      <div style={{
+        flex:1, display:"flex", flexDirection:"column",
+        padding:"32px 24px 24px", maxWidth:480, width:"100%", margin:"0 auto",
+        opacity: animating ? 0 : 1, transform: animating ? "translateX(30px)" : "translateX(0)",
+        transition:"opacity 0.2s, transform 0.2s",
+      }}>
+        {/* Step counter */}
+        <div style={{ fontSize:12, fontWeight:700, color:C.muted, letterSpacing:"0.08em", marginBottom:20 }}>
+          {step + 1} of {OB_STEPS.length}
+        </div>
+
+        {/* Emoji + headline */}
+        <div style={{ fontSize:44, marginBottom:16 }}>{s.emoji}</div>
+        <div style={{ fontFamily:"'Playfair Display',serif", fontSize:28, fontWeight:700, color:C.espresso, lineHeight:1.25, marginBottom:8, whiteSpace:"pre-line" }}>
+          {s.headline}
+        </div>
+        <div style={{ fontSize:14, color:C.muted, marginBottom:32, lineHeight:1.5 }}>{s.sub}</div>
+
+        {/* Options */}
+        <div style={{ display:"flex", flexDirection:"column", gap:10, flex:1 }}>
+          {s.options.map(o => {
+            const active = selected.includes(o.label);
+            return (
+              <button key={o.label} onClick={() => pick(o.label)} style={{
+                display:"flex", alignItems:"center", gap:14,
+                background: active ? C.espresso : "#fff",
+                border: `2px solid ${active ? C.espresso : C.border}`,
+                borderRadius:16, padding:"16px 18px",
+                cursor:"pointer", textAlign:"left",
+                boxShadow: active ? "0 4px 18px rgba(44,26,14,0.18)" : "0 1px 4px rgba(0,0,0,0.05)",
+                transition:"all 0.15s",
+              }}>
+                <span style={{ fontSize:22, flexShrink:0 }}>{o.icon}</span>
+                <span style={{ fontSize:15, fontWeight:600, color: active ? "#fff" : C.espresso, lineHeight:1.3 }}>{o.label}</span>
+                {active && <span style={{ marginLeft:"auto", color:C.terra, fontSize:18, flexShrink:0 }}>✓</span>}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Next button */}
+        <button onClick={next} disabled={!selected.length} style={{
+          marginTop:28, width:"100%", padding:"18px 0",
+          background: selected.length ? C.terra : C.border,
+          color: selected.length ? "#fff" : C.muted,
+          border:"none", borderRadius:16, fontSize:16, fontWeight:700,
+          cursor: selected.length ? "pointer" : "default",
+          transition:"background 0.2s, color 0.2s",
+          boxShadow: selected.length ? "0 4px 18px rgba(196,98,45,0.35)" : "none",
+        }}>
+          {isLast ? "Build my kitchen →" : "Continue →"}
+        </button>
+
+        {step === 0 && (
+          <div style={{ textAlign:"center", color:C.muted, fontSize:12, marginTop:16 }}>
+            Takes less than a minute · Free forever
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main App ─────────────────────────────────────────────────
 function FridgeChefApp() {
   const { user, signIn, logOut, authError, inAppBrowser } = useAuth();
+  const [onboarded, setOnboarded] = useState(() => {
+    if (typeof window === "undefined") return true; // skip on server
+    return !!localStorage.getItem("fc_onboarded");
+  });
+  const [userPrefs, setUserPrefs] = useState(() => {
+    try {
+      if (typeof window === "undefined") return {};
+      return JSON.parse(localStorage.getItem("fc_prefs") || "{}");
+    } catch { return {}; }
+  });
 
   // Core state
   const [tab, setTab]             = useState("recipes");
@@ -872,6 +1114,33 @@ Keep it budget-friendly.`,
   };
 
   const toggleCheck = (key) => setCheckedItems(prev => ({ ...prev, [key]: !prev[key] }));
+
+  // ── Onboarding gate ──────────────────────────────────────────
+  if (!onboarded) {
+    return (
+      <Onboarding onDone={(prefs) => {
+        // Apply dietary preference from onboarding
+        const dietMap = {
+          "Vegetarian":"vegetarian", "Vegan":"vegan",
+          "Halal":"halal", "Low-carb":"low-carb", "Gluten-free":"gluten-free",
+        };
+        const dietPref = prefs.diet && !prefs.diet.includes("No restrictions")
+          ? dietMap[prefs.diet[0]] || "any"
+          : "any";
+        if (dietPref !== "any") setDiet(dietPref);
+
+        // Apply time preference
+        const timeMap = {
+          "Under 15 minutes":"15", "15–30 minutes":"30",
+          "30–60 minutes":"60", "I love slow cooking":"120",
+        };
+        if (prefs.time && timeMap[prefs.time]) setMaxTime(timeMap[prefs.time]);
+
+        setUserPrefs(prefs);
+        setOnboarded(true);
+      }} />
+    );
+  }
 
   // ── Render ────────────────────────────────────────────────────
   return (

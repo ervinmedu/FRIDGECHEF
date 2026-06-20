@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { AuthProvider, useAuth } from "../components/AuthContext";
-import { getFavorites, addFavorite, removeFavorite, getMealPlan, saveMealPlan, getPremiumStatus } from "../lib/db";
+import { getFavorites, addFavorite, removeFavorite, getMealPlan, saveMealPlan, getUserStatus } from "../lib/db";
 import { CURRENCIES, getCurrencyForCountry } from "../lib/currencies";
 
 // ─── Palette ──────────────────────────────────────────────────
@@ -337,7 +337,7 @@ function RecipeCard({ recipe, onSave, saved, isPremium, onUpgrade }) {
             <span>⏱ {recipe.prepTime}</span>
             <span>· {recipe.difficulty || "Easy"}</span>
           </div>
-          {isPremium && nutrition && (
+          {isUnlocked && nutrition && (
             <div style={{ display:"flex", gap:8, marginTop:8, flexWrap:"wrap" }}>
               {[
                 { label:"cal", value:nutrition.calories, bg:"#FFF3E0", color:C.terra },
@@ -352,7 +352,7 @@ function RecipeCard({ recipe, onSave, saved, isPremium, onUpgrade }) {
               ))}
             </div>
           )}
-          {!isPremium && (
+          {!isUnlocked && (
             <button onClick={(e) => { e.stopPropagation(); onUpgrade(); }} style={{
               marginTop:8, background:"none", border:`1px solid ${C.terra}`,
               color:C.terra, borderRadius:8, padding:"3px 10px", fontSize:11,
@@ -372,7 +372,7 @@ function RecipeCard({ recipe, onSave, saved, isPremium, onUpgrade }) {
 
       {open && (
         <div style={{ padding:"0 16px 16px", borderTop:`1px solid ${C.border}` }}>
-          {isPremium && nutrition && (
+          {isUnlocked && nutrition && (
             <div style={{
               background:C.cream, borderRadius:12, padding:"12px 14px", margin:"14px 0 4px",
               border:`1px solid ${C.border}`,
@@ -466,7 +466,7 @@ function AppHeader({ user, signIn, logOut, isPremium, onOpenPremium, currency = 
           <span style={{ color:C.terra, marginLeft:4 }}>🍳</span>
         </div>
         <div style={{ display:"flex", gap:10, alignItems:"center" }}>
-          {isPremium ? (
+          {isUnlocked ? (
             <div style={{
               background:C.gold, color:C.espresso, borderRadius:20,
               padding:"4px 12px", fontSize:12, fontWeight:700,
@@ -575,6 +575,152 @@ function IngredientChip({ label, onRemove }) {
         color:C.terra, fontSize:16, lineHeight:1, padding:0,
       }}>×</button>
     </span>
+  );
+}
+
+// ─── Trial Banner ─────────────────────────────────────────────
+function TrialBanner({ daysLeft, onUpgrade }) {
+  const urgent = daysLeft <= 1;
+  const bg     = urgent ? "#B71C1C" : "#E65100";
+  const msg    = daysLeft === 0
+    ? "⏰ Your free trial ends today!"
+    : daysLeft === 1
+    ? "⏰ Last day of your free trial!"
+    : `🎉 ${daysLeft} days left in your free trial`;
+
+  return (
+    <div style={{
+      background: bg, color: "#fff", padding: "10px 16px",
+      display: "flex", alignItems: "center", justifyContent: "space-between",
+      gap: 10, flexShrink: 0,
+    }}>
+      <span style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.4 }}>{msg}</span>
+      <button onClick={onUpgrade} style={{
+        background: "#fff", color: bg, border: "none",
+        borderRadius: 20, padding: "6px 14px", fontSize: 12,
+        fontWeight: 700, cursor: "pointer", flexShrink: 0,
+      }}>Upgrade now</button>
+    </div>
+  );
+}
+
+// ─── Hard Paywall ──────────────────────────────────────────────
+function HardPaywall({ onUpgrade, currency }) {
+  const [billing, setBilling] = useState("yearly");
+  const { symbol, monthly, yearly, monthlyId, yearlyId } = currency || { symbol:"$", monthly:4.99, yearly:39, monthlyId:"", yearlyId:"" };
+  const perMonth = (yearly / 12).toFixed(2);
+  const savings  = Math.round((1 - yearly / (monthly * 12)) * 100);
+  const priceId  = billing === "yearly" ? yearlyId : monthlyId;
+
+  const features = [
+    ["🎤", "Voice ingredient capture"],
+    ["📷", "AI photo scanning"],
+    ["🔢", "Full nutrition & macros"],
+    ["📅", "Weekly meal planner"],
+    ["🛒", "Auto grocery list"],
+    ["❤️", "Unlimited saved recipes"],
+    ["🌍", "Cuisine selector"],
+    ["✨", "Unlimited AI recipe generation"],
+  ];
+
+  return (
+    <div style={{
+      position: "fixed", inset: 0, zIndex: 9999, overflowY: "auto",
+      background: `linear-gradient(160deg, ${C.espresso} 0%, #1a0f07 100%)`,
+      display: "flex", flexDirection: "column", alignItems: "center",
+      padding: "40px 24px 40px",
+    }}>
+      {/* Crown + title */}
+      <div style={{ fontSize: 52, marginBottom: 12 }}>👑</div>
+      <div style={{
+        fontFamily: "'Playfair Display',serif", fontSize: 28, fontWeight: 700,
+        color: C.gold, textAlign: "center", marginBottom: 8,
+      }}>Your free trial has ended</div>
+      <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 14, textAlign: "center", marginBottom: 28, maxWidth: 300 }}>
+        Unlock everything to keep cooking smarter with your fridge
+      </div>
+
+      {/* Feature list */}
+      <div style={{
+        background: "rgba(255,255,255,0.06)", borderRadius: 18,
+        padding: "18px 20px", width: "100%", maxWidth: 380, marginBottom: 24,
+      }}>
+        {features.map(([icon, label]) => (
+          <div key={label} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+            <span style={{ fontSize: 18, width: 26, textAlign: "center" }}>{icon}</span>
+            <span style={{ fontSize: 14, color: "rgba(255,255,255,0.85)", flex: 1 }}>{label}</span>
+            <span style={{ color: C.gold, fontSize: 16 }}>✓</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Billing toggle */}
+      <div style={{
+        display: "flex", background: "rgba(255,255,255,0.08)",
+        borderRadius: 30, padding: 4, marginBottom: 16, width: "100%", maxWidth: 380,
+      }}>
+        {["monthly","yearly"].map(b => (
+          <button key={b} onClick={() => setBilling(b)} style={{
+            flex: 1, padding: "10px 0", border: "none", borderRadius: 26,
+            background: billing === b ? C.terra : "transparent",
+            color: billing === b ? "#fff" : "rgba(255,255,255,0.5)",
+            fontWeight: 700, fontSize: 14, cursor: "pointer", transition: "all 0.2s",
+            position: "relative",
+          }}>
+            {b === "yearly" ? "Yearly" : "Monthly"}
+            {b === "yearly" && (
+              <span style={{
+                position: "absolute", top: -8, right: 8,
+                background: C.gold, color: C.espresso,
+                fontSize: 9, fontWeight: 800, borderRadius: 10,
+                padding: "2px 6px",
+              }}>SAVE {savings}%</span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* Price display */}
+      <div style={{ textAlign: "center", marginBottom: 20 }}>
+        <div style={{ color: "#fff", fontSize: 40, fontWeight: 800 }}>
+          {symbol}{billing === "yearly" ? perMonth : monthly}
+          <span style={{ fontSize: 16, fontWeight: 400, color: "rgba(255,255,255,0.5)" }}>/mo</span>
+        </div>
+        {billing === "yearly" && (
+          <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 12, marginTop: 2 }}>
+            Billed {symbol}{yearly}/year · cancel anytime
+          </div>
+        )}
+      </div>
+
+      {/* CTA */}
+      <button onClick={() => onUpgrade(priceId)} style={{
+        width: "100%", maxWidth: 380, padding: "18px 0",
+        background: `linear-gradient(135deg, ${C.terra}, ${C.terraDeep})`,
+        color: "#fff", border: "none", borderRadius: 16,
+        fontSize: 17, fontWeight: 800, cursor: "pointer",
+        boxShadow: "0 6px 24px rgba(196,98,45,0.45)",
+        marginBottom: 12,
+      }}>
+        Unlock Premium →
+      </button>
+
+      <div style={{ color: "rgba(255,255,255,0.3)", fontSize: 12, textAlign: "center", lineHeight: 1.8 }}>
+        🔒 Secure payment via Stripe · Cancel anytime
+      </div>
+
+      {/* Social proof */}
+      <div style={{
+        marginTop: 28, background: "rgba(255,255,255,0.05)",
+        borderRadius: 14, padding: "14px 18px", maxWidth: 380, width: "100%",
+      }}>
+        <div style={{ color: C.gold, fontSize: 14, marginBottom: 4 }}>★★★★★</div>
+        <div style={{ color: "rgba(255,255,255,0.7)", fontSize: 13, lineHeight: 1.5 }}>
+          "FridgeChef saves me $200/month on groceries. I never waste food anymore."
+        </div>
+        <div style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, marginTop: 6 }}>— Maria K., home cook</div>
+      </div>
+    </div>
   );
 }
 
@@ -843,9 +989,15 @@ function FridgeChefApp() {
   const [recipeError, setRecipeError] = useState("");
   const [plannerError, setPlannerError] = useState("");
 
-  // Premium & feature state
+  // Premium & trial state
   const [isPremium, setIsPremium]     = useState(false);
+  const [inTrial, setInTrial]         = useState(false);
+  const [trialDaysLeft, setTrialDaysLeft] = useState(null);
+  const [trialExpired, setTrialExpired]   = useState(false);
   const [showPremium, setShowPremium] = useState(false);
+
+  // All features unlocked during trial OR with paid premium
+  const isUnlocked = isPremium || inTrial;
   const [listening, setListening]     = useState(false);
   const [handsFree, setHandsFree]     = useState(false);
   const [voiceIngredient, setVoiceIngredient] = useState("");
@@ -878,12 +1030,17 @@ function FridgeChefApp() {
       .catch(() => {});
   }, []);
 
-  // Load from Firestore + check premium status
+  // Load from Firestore + check premium/trial status
   useEffect(() => {
     if (!user) return;
     getFavorites(user.uid).then(setFavorites).catch(console.error);
     getMealPlan(user.uid).then(setPlanner).catch(console.error);
-    getPremiumStatus(user.uid).then(setIsPremium).catch(console.error);
+    getUserStatus(user.uid).then(s => {
+      setIsPremium(s.isPremium);
+      setInTrial(s.inTrial);
+      setTrialDaysLeft(s.trialDaysLeft);
+      setTrialExpired(s.trialExpired);
+    }).catch(console.error);
   }, [user]);
 
   // ── Ingredients ──────────────────────────────────────────────
@@ -899,7 +1056,7 @@ function FridgeChefApp() {
 
   // ── Voice capture (Premium) ───────────────────────────────────
   const startVoice = useCallback((continuous = false) => {
-    if (!isPremium) { setShowPremium(true); return; }
+    if (!isUnlocked) { setShowPremium(true); return; }
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) { alert("Voice not supported in this browser. Try Chrome."); return; }
     const addVoice = (val) => {
@@ -942,7 +1099,7 @@ function FridgeChefApp() {
     rec.onend   = () => { setListening(false); setHandsFree(false); setVoiceIngredient(""); };
     recognitionRef.current = rec;
     rec.start();
-  }, [isPremium]);
+  }, [isUnlocked]);
 
   // Stop voice recognition on unmount
   useEffect(() => () => { recognitionRef.current?.stop(); }, []);
@@ -975,7 +1132,7 @@ function FridgeChefApp() {
   // ── Photo scan (Premium — real Claude vision) ─────────────────
   const [scanning, setScanning] = useState(false);
   const handlePhotoScan = () => {
-    if (!isPremium) { setShowPremium(true); return; }
+    if (!isUnlocked) { setShowPremium(true); return; }
     const fileInput = document.createElement("input");
     fileInput.type = "file"; fileInput.accept = "image/*";
     fileInput.onchange = async (e) => {
@@ -1020,7 +1177,7 @@ function FridgeChefApp() {
     let mi = 0; setLoadingMsg(msgs[0]);
     intervalRef.current = setInterval(() => { mi=(mi+1)%msgs.length; setLoadingMsg(msgs[mi]); }, 1500);
     try {
-      const nutritionRequest = isPremium
+      const nutritionRequest = isUnlocked
         ? `Include "nutrition":{"calories":0,"protein":0,"carbs":0,"fat":0} per serving for each recipe.`
         : "";
       const cuisineInstruction = cuisine !== "any"
@@ -1029,7 +1186,7 @@ function FridgeChefApp() {
       const text = await callClaude(
         `I have: ${ingredients.join(", ")}. Diet: ${diet}. Max time: ${maxTime} min. ${cuisineInstruction}
 Return a JSON array of exactly 3 recipes. Each item MUST follow this format exactly:
-{"name":"","prepTime":"","difficulty":"Easy","ingredients":[],"steps":[],"missingIngredients":[],"substitutions":"${isPremium ? `","nutrition":{"calories":0,"protein":0,"carbs":0,"fat":0}` : '"'}
+{"name":"","prepTime":"","difficulty":"Easy","ingredients":[],"steps":[],"missingIngredients":[],"substitutions":"${isUnlocked ? `","nutrition":{"calories":0,"protein":0,"carbs":0,"fat":0}` : '"'}
 ${nutritionRequest}
 Budget-friendly. Use provided ingredients. Return ONLY the JSON array, no markdown.`,
         "You are a home chef AI. Return ONLY valid JSON with no markdown or explanation."
@@ -1138,8 +1295,27 @@ Keep it budget-friendly.`,
   }
 
   // ── Render ────────────────────────────────────────────────────
+
+  // Hard paywall — trial expired, not paying
+  if (trialExpired) {
+    return (
+      <HardPaywall
+        currency={currency}
+        onUpgrade={(priceId) => handleUpgrade(priceId)}
+      />
+    );
+  }
+
   return (
     <div style={{ maxWidth:430, margin:"0 auto", minHeight:"100vh", background:C.cream, paddingBottom:30 }}>
+
+      {/* Trial reminder banner — show when ≤ 2 days left */}
+      {inTrial && trialDaysLeft <= 2 && (
+        <TrialBanner
+          daysLeft={trialDaysLeft}
+          onUpgrade={() => setShowPremium(true)}
+        />
+      )}
 
       {showPremium && (
         <PremiumModal
@@ -1154,7 +1330,7 @@ Keep it budget-friendly.`,
 
       <AppHeader
         user={user} signIn={signIn} logOut={logOut}
-        isPremium={isPremium} onOpenPremium={() => setShowPremium(true)}
+        isPremium={isUnlocked} onOpenPremium={() => setShowPremium(true)}
         currency={currency}
       />
 
@@ -1308,10 +1484,10 @@ Keep it budget-friendly.`,
                   }}
                 />
                 <button
-                  onClick={() => isPremium ? startVoice(false) : setShowPremium(true)}
-                  title={isPremium ? "Voice input" : "Premium: voice input"}
+                  onClick={() => isUnlocked ? startVoice(false) : setShowPremium(true)}
+                  title={isUnlocked ? "Voice input" : "Premium: voice input"}
                   style={{
-                    background: listening ? C.terra : (isPremium ? C.terraLight : "#f0ece8"),
+                    background: listening ? C.terra : (isUnlocked ? C.terraLight : "#f0ece8"),
                     border:`1.5px solid ${listening ? C.terra : C.border}`,
                     borderRadius:12, width:44, cursor:"pointer", fontSize:18,
                     display:"flex", alignItems:"center", justifyContent:"center",
@@ -1319,7 +1495,7 @@ Keep it budget-friendly.`,
                   }}
                 >
                   🎤
-                  {!isPremium && <span style={{ position:"absolute", top:2, right:2, fontSize:8 }}>🔒</span>}
+                  {!isUnlocked && <span style={{ position:"absolute", top:2, right:2, fontSize:8 }}>🔒</span>}
                 </button>
                 <button onClick={addIngredient} style={{
                   background:C.terra, color:"#fff", border:"none",
@@ -1331,27 +1507,27 @@ Keep it budget-friendly.`,
               {/* Photo scan + Hands-free */}
               <div style={{ display:"flex", gap:8, marginBottom:12 }}>
                 <button onClick={handlePhotoScan} disabled={scanning} style={{
-                  flex:1, background: isPremium ? C.cream : "#f0ece8",
+                  flex:1, background: isUnlocked ? C.cream : "#f0ece8",
                   border:`1.5px solid ${scanning ? C.terra : C.border}`, borderRadius:12, padding:"9px 0",
                   fontSize:13, fontWeight:600, cursor: scanning ? "wait" : "pointer",
-                  color: isPremium ? C.espresso : C.muted,
+                  color: isUnlocked ? C.espresso : C.muted,
                   display:"flex", alignItems:"center", justifyContent:"center", gap:6,
                 }}>
                   {scanning ? "🔍 Scanning…" : "📷 Photo scan"}
-                  {!isPremium && !scanning && <span style={{ fontSize:10 }}>🔒</span>}
+                  {!isUnlocked && !scanning && <span style={{ fontSize:10 }}>🔒</span>}
                 </button>
                 <button onClick={() => {
-                  if (!isPremium) { setShowPremium(true); return; }
+                  if (!isUnlocked) { setShowPremium(true); return; }
                   setHandsFree(true); startVoice(true);
                 }} style={{
-                  flex:1, background: handsFree ? C.terraLight : (isPremium ? C.cream : "#f0ece8"),
+                  flex:1, background: handsFree ? C.terraLight : (isUnlocked ? C.cream : "#f0ece8"),
                   border:`1.5px solid ${handsFree ? C.terra : C.border}`, borderRadius:12, padding:"9px 0",
                   fontSize:13, fontWeight:600, cursor:"pointer",
-                  color: handsFree ? C.terra : (isPremium ? C.espresso : C.muted),
+                  color: handsFree ? C.terra : (isUnlocked ? C.espresso : C.muted),
                   display:"flex", alignItems:"center", justifyContent:"center", gap:6,
                 }}>
                   🗣 Hands-free
-                  {!isPremium && <span style={{ fontSize:10 }}>🔒</span>}
+                  {!isUnlocked && <span style={{ fontSize:10 }}>🔒</span>}
                 </button>
               </div>
 
@@ -1388,7 +1564,7 @@ Keep it budget-friendly.`,
               <RecipeCard
                 key={i} recipe={r}
                 onSave={toggleFavorite} saved={isFav(r)}
-                isPremium={isPremium} onUpgrade={() => setShowPremium(true)}
+                isPremium={isUnlocked} onUpgrade={() => setShowPremium(true)}
               />
             ))}
 
@@ -1403,7 +1579,7 @@ Keep it budget-friendly.`,
             )}
 
             {/* Premium upsell (if free) */}
-            {!isPremium && (
+            {!isUnlocked && (
               <div style={{
                 background:C.espresso, borderRadius:20, padding:"24px 20px", marginTop:8,
                 textAlign:"center",
@@ -1510,7 +1686,7 @@ Keep it budget-friendly.`,
                   <RecipeCard
                     key={i} recipe={r}
                     onSave={toggleFavorite} saved={true}
-                    isPremium={isPremium} onUpgrade={() => setShowPremium(true)}
+                    isPremium={isUnlocked} onUpgrade={() => setShowPremium(true)}
                   />
                 ))}
               </>

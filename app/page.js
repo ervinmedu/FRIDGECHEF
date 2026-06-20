@@ -389,10 +389,15 @@ function RecipeCard({ recipe, onSave, saved, isPremium, onUpgrade }) {
             </div>
           )}
           <CardSection label="Ingredients">
-            <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
-              {recipe.ingredients?.map((ing,i) => (
-                <RecipeIngredientRow key={i} text={ing} />
-              ))}
+            <div style={{ display:"flex", gap:12, alignItems:"flex-start" }}>
+              <div style={{ flex:1, display:"flex", flexDirection:"column", gap:6 }}>
+                {recipe.ingredients?.map((ing,i) => (
+                  <RecipeIngredientRow key={i} text={ing} />
+                ))}
+              </div>
+              <div style={{ flexShrink:0 }}>
+                <DishPhoto name={recipe.name} size={120} />
+              </div>
             </div>
           </CardSection>
           <CardSection label="Steps">

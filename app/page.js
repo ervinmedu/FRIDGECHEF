@@ -295,18 +295,23 @@ function RecipeCard({ recipe, onSave, saved, isPremium, onUpgrade }) {
       overflow:"hidden", marginBottom:12,
       boxShadow:"0 2px 14px rgba(44,26,14,0.06)",
     }}>
-      {imgOk && (
-        <img
-          src={`https://source.unsplash.com/400x180/?${encodeURIComponent(recipe.name)},food`}
-          alt={recipe.name}
-          onError={() => setImgOk(false)}
-          style={{ width:"100%", height:150, objectFit:"cover", display:"block" }}
-        />
-      )}
       <div onClick={() => setOpen(!open)} style={{
         padding:"16px", cursor:"pointer",
         display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:10,
       }}>
+        {/* Dish thumbnail */}
+        <div style={{ flexShrink:0 }}>
+          {imgOk ? (
+            <img
+              src={`https://source.unsplash.com/90x90/?${encodeURIComponent(recipe.name)},food,dish`}
+              alt={recipe.name}
+              onError={() => setImgOk(false)}
+              style={{ width:80, height:80, borderRadius:14, objectFit:"cover", display:"block" }}
+            />
+          ) : (
+            <div style={{ width:80, height:80, borderRadius:14, background:C.terraLight, display:"flex", alignItems:"center", justifyContent:"center", fontSize:32 }}>🍽️</div>
+          )}
+        </div>
         <div style={{ flex:1 }}>
           <div style={{
             fontFamily:"'Playfair Display',serif", fontSize:17, fontWeight:700,

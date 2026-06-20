@@ -1,9 +1,9 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useAuth } from "../../components/AuthContext";
+import { AuthProvider, useAuth } from "../../components/AuthContext";
 import { getPremiumStatus } from "../../lib/db";
 
-export default function SuccessPage() {
+function SuccessContent() {
   const { user } = useAuth();
   const [status, setStatus] = useState("activating"); // activating | ready | timeout
 
@@ -125,5 +125,13 @@ export default function SuccessPage() {
       </div>
       <style>{`@keyframes pulse { 0%,100%{opacity:0.3} 50%{opacity:1} }`}</style>
     </div>
+  );
+}
+
+export default function SuccessPage() {
+  return (
+    <AuthProvider>
+      <SuccessContent />
+    </AuthProvider>
   );
 }

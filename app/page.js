@@ -264,22 +264,10 @@ function NutritionBar({ label, value, unit, color, max }) {
 
 // ─── Recipe Card ──────────────────────────────────────────────
 function RecipeIngredientRow({ text }) {
-  const [imgOk, setImgOk] = useState(true);
-  // extract just the ingredient name (before any quantity/comma)
-  const name = text.split(/[\d,]/)[0].trim().replace(/^(fresh|dried|chopped|minced|sliced|cooked)\s+/i, "");
   return (
-    <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-      {imgOk ? (
-        <img
-          src={`https://www.themealdb.com/images/ingredients/${encodeURIComponent(name)}-Small.png`}
-          alt=""
-          onError={() => setImgOk(false)}
-          style={{ width:34, height:34, borderRadius:8, objectFit:"cover", background:"#f5f0eb", flexShrink:0 }}
-        />
-      ) : (
-        <div style={{ width:34, height:34, borderRadius:8, background:C.terraLight, flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", fontSize:16 }}>🥄</div>
-      )}
-      <span style={{ fontSize:13, color:"#555", lineHeight:1.4 }}>{text}</span>
+    <div style={{ display:"flex", alignItems:"flex-start", gap:8, paddingLeft:4 }}>
+      <span style={{ color:C.terra, fontSize:14, marginTop:1, flexShrink:0 }}>•</span>
+      <span style={{ fontSize:13, color:"#555", lineHeight:1.5 }}>{text}</span>
     </div>
   );
 }
@@ -290,31 +278,40 @@ function DishPhoto({ name, size = 80 }) {
 
   useEffect(() => {
     if (!name) return;
+    // Try TheMealDB first (has real dish photos for many global recipes)
     fetch(`https://www.themealdb.com/api/json/v1/1/search.php?s=${encodeURIComponent(name)}`)
       .then(r => r.json())
       .then(data => {
         const thumb = data.meals?.[0]?.strMealThumb;
-        setSrc(thumb ? thumb + "/preview" : null);
+        // If TheMealDB found it, use its photo; otherwise fall back to LoremFlickr
+        setSrc(thumb
+          ? thumb + "/preview"
+          : `https://loremflickr.com/${size}/${size}/${encodeURIComponent(name)},food`
+        );
       })
-      .catch(() => setSrc(null))
+      .catch(() => {
+        setSrc(`https://loremflickr.com/${size}/${size}/${encodeURIComponent(name)},food`);
+      })
       .finally(() => setTried(true));
-  }, [name]);
+  }, [name, size]);
 
-  const radius = 14;
-  const boxStyle = { width:size, height:size, borderRadius:radius, flexShrink:0, overflow:"hidden" };
+  const boxStyle = { width:size, height:size, borderRadius:14, flexShrink:0, overflow:"hidden" };
 
   if (!tried) return (
     <div style={{ ...boxStyle, background:C.terraLight, display:"flex", alignItems:"center", justifyContent:"center" }}>
-      <div style={{ width:24, height:24, borderRadius:"50%", border:`3px solid ${C.terra}`, borderTopColor:"transparent", animation:"spin 0.8s linear infinite" }} />
+      <div style={{ width:22, height:22, borderRadius:"50%", border:`3px solid ${C.terra}`, borderTopColor:"transparent", animation:"spin 0.8s linear infinite" }} />
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   );
 
-  if (!src) return (
-    <div style={{ ...boxStyle, background:C.terraLight, display:"flex", alignItems:"center", justifyContent:"center", fontSize:32 }}>🍽️</div>
+  return (
+    <img
+      src={src}
+      alt={name}
+      onError={e => { e.target.style.display = "none"; }}
+      style={{ ...boxStyle, objectFit:"cover", display:"block" }}
+    />
   );
-
-  return <img src={src} alt={name} style={{ ...boxStyle, objectFit:"cover", display:"block" }} />;
 }
 
 function RecipeCard({ recipe, onSave, saved, isPremium, onUpgrade }) {

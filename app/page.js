@@ -337,7 +337,7 @@ function RecipeCard({ recipe, onSave, saved, isPremium, onUpgrade }) {
             <span>⏱ {recipe.prepTime}</span>
             <span>· {recipe.difficulty || "Easy"}</span>
           </div>
-          {isUnlocked && nutrition && (
+          {isPremium && nutrition && (
             <div style={{ display:"flex", gap:8, marginTop:8, flexWrap:"wrap" }}>
               {[
                 { label:"cal", value:nutrition.calories, bg:"#FFF3E0", color:C.terra },
@@ -352,7 +352,7 @@ function RecipeCard({ recipe, onSave, saved, isPremium, onUpgrade }) {
               ))}
             </div>
           )}
-          {!isUnlocked && (
+          {!isPremium && (
             <button onClick={(e) => { e.stopPropagation(); onUpgrade(); }} style={{
               marginTop:8, background:"none", border:`1px solid ${C.terra}`,
               color:C.terra, borderRadius:8, padding:"3px 10px", fontSize:11,
@@ -372,7 +372,7 @@ function RecipeCard({ recipe, onSave, saved, isPremium, onUpgrade }) {
 
       {open && (
         <div style={{ padding:"0 16px 16px", borderTop:`1px solid ${C.border}` }}>
-          {isUnlocked && nutrition && (
+          {isPremium && nutrition && (
             <div style={{
               background:C.cream, borderRadius:12, padding:"12px 14px", margin:"14px 0 4px",
               border:`1px solid ${C.border}`,
@@ -466,7 +466,7 @@ function AppHeader({ user, signIn, logOut, isPremium, onOpenPremium, currency = 
           <span style={{ color:C.terra, marginLeft:4 }}>🍳</span>
         </div>
         <div style={{ display:"flex", gap:10, alignItems:"center" }}>
-          {isUnlocked ? (
+          {isPremium ? (
             <div style={{
               background:C.gold, color:C.espresso, borderRadius:20,
               padding:"4px 12px", fontSize:12, fontWeight:700,

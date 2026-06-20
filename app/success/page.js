@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { AuthProvider, useAuth } from "../../components/AuthContext";
 import { db } from "../../lib/firebase";
 import { doc, setDoc } from "firebase/firestore";
@@ -7,32 +7,23 @@ import { doc, setDoc } from "firebase/firestore";
 function SuccessContent() {
   const { user } = useAuth();
   const [status, setStatus] = useState("activating");
+  const written = useRef(false);
 
+  // Write premium to Firestore as soon as we have a user — background, don't block UI
   useEffect(() => {
-    if (!user) return;
-
-    // Immediately mark premium in Firestore — don't wait for webhook
+    if (!user || written.current) return;
+    written.current = true;
     setDoc(doc(db, "users", user.uid), {
       isPremium: true,
       premiumSince: new Date().toISOString(),
-    }, { merge: true })
-      .then(() => setStatus("ready"))
-      .catch(() => {
-        // Fallback: poll for webhook to catch up
-        let attempts = 0;
-        const poll = async () => {
-          const { getPremiumStatus } = await import("../../lib/db");
-          try {
-            const premium = await getPremiumStatus(user.uid);
-            if (premium) { setStatus("ready"); return; }
-          } catch {}
-          attempts++;
-          if (attempts >= 8) { setStatus("ready"); return; } // show ready anyway
-          setTimeout(poll, 1500);
-        };
-        poll();
-      });
+    }, { merge: true }).catch(console.error);
   }, [user]);
+
+  // Show ready after 1.5s regardless — don't make user wait for auth
+  useEffect(() => {
+    const t = setTimeout(() => setStatus("ready"), 1500);
+    return () => clearTimeout(t);
+  }, []);
 
   return (
     <div style={{
@@ -62,7 +53,7 @@ function SuccessContent() {
           fontWeight: 700,
           marginBottom: 10,
         }}>
-          {status === "activating" ? "Activating Premium…" : "Welcome to Premium!"}
+          {status === "activating" ? "Activating…" : "Welcome to Premium!"}
         </div>
         <div style={{
           color: "rgba(255,255,255,0.75)",
@@ -71,35 +62,23 @@ function SuccessContent() {
           marginBottom: 28,
         }}>
           {status === "activating"
-            ? "Setting up your account, just a moment…"
+            ? "Just a second…"
             : "You now have full access to voice capture, photo scanning, and nutrition tracking."}
         </div>
 
-        {status !== "activating" && (
+        {status === "ready" && (
           <>
-            <div style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 10,
-              marginBottom: 28,
-              textAlign: "left",
-            }}>
+            <div style={{ display:"flex", flexDirection:"column", gap:10, marginBottom:28, textAlign:"left" }}>
               {[
                 ["🎤", "Voice ingredient capture"],
                 ["📷", "AI photo scanning"],
                 ["🔢", "Full macros & nutrition"],
                 ["♾️", "Unlimited favorites"],
               ].map(([icon, label]) => (
-                <div key={label} style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 12,
-                  color: "rgba(255,255,255,0.85)",
-                  fontSize: 14,
-                }}>
-                  <span style={{ fontSize: 20 }}>{icon}</span>
+                <div key={label} style={{ display:"flex", alignItems:"center", gap:12, color:"rgba(255,255,255,0.85)", fontSize:14 }}>
+                  <span style={{ fontSize:20 }}>{icon}</span>
                   {label}
-                  <span style={{ marginLeft: "auto", color: "#D4A847" }}>✓</span>
+                  <span style={{ marginLeft:"auto", color:"#D4A847" }}>✓</span>
                 </div>
               ))}
             </div>
@@ -116,24 +95,24 @@ function SuccessContent() {
             }}>
               Start cooking →
             </a>
-            <div style={{ color: "rgba(255,255,255,0.3)", fontSize: 11, marginTop: 14 }}>
-              Cancel anytime · Webhook will confirm shortly
+            <div style={{ color:"rgba(255,255,255,0.3)", fontSize:11, marginTop:14 }}>
+              Cancel anytime · No charge for 7 days
             </div>
           </>
         )}
 
         {status === "activating" && (
-          <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 8 }}>
+          <div style={{ display:"flex", justifyContent:"center", gap:6, marginTop:8 }}>
             {[0,1,2].map(i => (
               <div key={i} style={{
-                width: 8, height: 8, borderRadius: "50%", background: "#D4A847",
-                animation: `pulse 1.2s ease-in-out ${i * 0.2}s infinite`,
+                width:8, height:8, borderRadius:"50%", background:"#D4A847",
+                animation:`pulse 1.2s ease-in-out ${i*0.2}s infinite`,
               }} />
             ))}
           </div>
         )}
       </div>
-      <style>{`@keyframes pulse { 0%,100%{opacity:0.3} 50%{opacity:1} }`}</style>
+      <style>{`@keyframes pulse{0%,100%{opacity:0.3}50%{opacity:1}}`}</style>
     </div>
   );
 }

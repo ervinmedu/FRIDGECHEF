@@ -13,7 +13,7 @@ export async function POST(req) {
     }
 
     const message = await client.messages.create({
-      model: "claude-sonnet-4-6",
+      model: "claude-haiku-4-5-20251001",
       max_tokens: maxTokens || 2048,
       system: system || "You are a helpful home chef assistant.",
       messages: [{ role: "user", content: prompt }],

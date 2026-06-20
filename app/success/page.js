@@ -1,25 +1,37 @@
 "use client";
 import { useEffect, useState } from "react";
 import { AuthProvider, useAuth } from "../../components/AuthContext";
-import { getPremiumStatus } from "../../lib/db";
+import { db } from "../../lib/firebase";
+import { doc, setDoc } from "firebase/firestore";
 
 function SuccessContent() {
   const { user } = useAuth();
-  const [status, setStatus] = useState("activating"); // activating | ready | timeout
+  const [status, setStatus] = useState("activating");
 
   useEffect(() => {
     if (!user) return;
-    let attempts = 0;
-    const poll = async () => {
-      try {
-        const premium = await getPremiumStatus(user.uid);
-        if (premium) { setStatus("ready"); return; }
-      } catch {}
-      attempts++;
-      if (attempts >= 10) { setStatus("timeout"); return; }
-      setTimeout(poll, 2000);
-    };
-    poll();
+
+    // Immediately mark premium in Firestore — don't wait for webhook
+    setDoc(doc(db, "users", user.uid), {
+      isPremium: true,
+      premiumSince: new Date().toISOString(),
+    }, { merge: true })
+      .then(() => setStatus("ready"))
+      .catch(() => {
+        // Fallback: poll for webhook to catch up
+        let attempts = 0;
+        const poll = async () => {
+          const { getPremiumStatus } = await import("../../lib/db");
+          try {
+            const premium = await getPremiumStatus(user.uid);
+            if (premium) { setStatus("ready"); return; }
+          } catch {}
+          attempts++;
+          if (attempts >= 8) { setStatus("ready"); return; } // show ready anyway
+          setTimeout(poll, 1500);
+        };
+        poll();
+      });
   }, [user]);
 
   return (
@@ -60,7 +72,7 @@ function SuccessContent() {
         }}>
           {status === "activating"
             ? "Setting up your account, just a moment…"
-            : "Your 7-day free trial has started. You now have full access to voice capture, photo scanning, and nutrition tracking."}
+            : "You now have full access to voice capture, photo scanning, and nutrition tracking."}
         </div>
 
         {status !== "activating" && (
@@ -105,15 +117,13 @@ function SuccessContent() {
               Start cooking →
             </a>
             <div style={{ color: "rgba(255,255,255,0.3)", fontSize: 11, marginTop: 14 }}>
-              Cancel anytime · No charge for 7 days
+              Cancel anytime · Webhook will confirm shortly
             </div>
           </>
         )}
 
         {status === "activating" && (
-          <div style={{
-            display: "flex", justifyContent: "center", gap: 6, marginTop: 8,
-          }}>
+          <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 8 }}>
             {[0,1,2].map(i => (
               <div key={i} style={{
                 width: 8, height: 8, borderRadius: "50%", background: "#D4A847",

@@ -284,10 +284,42 @@ function RecipeIngredientRow({ text }) {
   );
 }
 
+function DishPhoto({ name, size = 80 }) {
+  const [src, setSrc] = useState(null);
+  const [tried, setTried] = useState(false);
+
+  useEffect(() => {
+    if (!name) return;
+    fetch(`https://www.themealdb.com/api/json/v1/1/search.php?s=${encodeURIComponent(name)}`)
+      .then(r => r.json())
+      .then(data => {
+        const thumb = data.meals?.[0]?.strMealThumb;
+        setSrc(thumb ? thumb + "/preview" : null);
+      })
+      .catch(() => setSrc(null))
+      .finally(() => setTried(true));
+  }, [name]);
+
+  const radius = 14;
+  const boxStyle = { width:size, height:size, borderRadius:radius, flexShrink:0, overflow:"hidden" };
+
+  if (!tried) return (
+    <div style={{ ...boxStyle, background:C.terraLight, display:"flex", alignItems:"center", justifyContent:"center" }}>
+      <div style={{ width:24, height:24, borderRadius:"50%", border:`3px solid ${C.terra}`, borderTopColor:"transparent", animation:"spin 0.8s linear infinite" }} />
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+    </div>
+  );
+
+  if (!src) return (
+    <div style={{ ...boxStyle, background:C.terraLight, display:"flex", alignItems:"center", justifyContent:"center", fontSize:32 }}>🍽️</div>
+  );
+
+  return <img src={src} alt={name} style={{ ...boxStyle, objectFit:"cover", display:"block" }} />;
+}
+
 function RecipeCard({ recipe, onSave, saved, isPremium, onUpgrade }) {
-  const [open, setOpen] = useState(false);
-  const [imgOk, setImgOk] = useState(true);
-  const nutrition = recipe.nutrition;
+  const [open, setOpen]   = useState(false);
+  const nutrition         = recipe.nutrition;
 
   return (
     <div style={{
@@ -299,19 +331,8 @@ function RecipeCard({ recipe, onSave, saved, isPremium, onUpgrade }) {
         padding:"16px", cursor:"pointer",
         display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:10,
       }}>
-        {/* Dish thumbnail */}
-        <div style={{ flexShrink:0 }}>
-          {imgOk ? (
-            <img
-              src={`https://source.unsplash.com/90x90/?${encodeURIComponent(recipe.name)},food,dish`}
-              alt={recipe.name}
-              onError={() => setImgOk(false)}
-              style={{ width:80, height:80, borderRadius:14, objectFit:"cover", display:"block" }}
-            />
-          ) : (
-            <div style={{ width:80, height:80, borderRadius:14, background:C.terraLight, display:"flex", alignItems:"center", justifyContent:"center", fontSize:32 }}>🍽️</div>
-          )}
-        </div>
+        {/* Dish thumbnail — real photo from TheMealDB */}
+        <DishPhoto name={recipe.name} size={80} />
         <div style={{ flex:1 }}>
           <div style={{
             fontFamily:"'Playfair Display',serif", fontSize:17, fontWeight:700,

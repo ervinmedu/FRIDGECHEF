@@ -263,6 +263,27 @@ function NutritionBar({ label, value, unit, color, max }) {
 }
 
 // ─── Recipe Card ──────────────────────────────────────────────
+function RecipeIngredientRow({ text }) {
+  const [imgOk, setImgOk] = useState(true);
+  // extract just the ingredient name (before any quantity/comma)
+  const name = text.split(/[\d,]/)[0].trim().replace(/^(fresh|dried|chopped|minced|sliced|cooked)\s+/i, "");
+  return (
+    <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+      {imgOk ? (
+        <img
+          src={`https://www.themealdb.com/images/ingredients/${encodeURIComponent(name)}-Small.png`}
+          alt=""
+          onError={() => setImgOk(false)}
+          style={{ width:34, height:34, borderRadius:8, objectFit:"cover", background:"#f5f0eb", flexShrink:0 }}
+        />
+      ) : (
+        <div style={{ width:34, height:34, borderRadius:8, background:C.terraLight, flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", fontSize:16 }}>🥄</div>
+      )}
+      <span style={{ fontSize:13, color:"#555", lineHeight:1.4 }}>{text}</span>
+    </div>
+  );
+}
+
 function RecipeCard({ recipe, onSave, saved, isPremium, onUpgrade }) {
   const [open, setOpen] = useState(false);
   const [imgOk, setImgOk] = useState(true);
@@ -345,11 +366,11 @@ function RecipeCard({ recipe, onSave, saved, isPremium, onUpgrade }) {
             </div>
           )}
           <CardSection label="Ingredients">
-            <ul style={{ margin:0, paddingLeft:18 }}>
+            <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
               {recipe.ingredients?.map((ing,i) => (
-                <li key={i} style={{ fontSize:13, color:"#555", marginBottom:4 }}>{ing}</li>
+                <RecipeIngredientRow key={i} text={ing} />
               ))}
-            </ul>
+            </div>
           </CardSection>
           <CardSection label="Steps">
             {recipe.steps?.map((step,i) => (

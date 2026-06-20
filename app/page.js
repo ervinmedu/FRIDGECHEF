@@ -272,46 +272,46 @@ function RecipeIngredientRow({ text }) {
   );
 }
 
+async function fetchDishPhoto(name) {
+  // 1. TheMealDB — real photos for thousands of global dishes
+  try {
+    const r = await fetch(`https://www.themealdb.com/api/json/v1/1/search.php?s=${encodeURIComponent(name)}`);
+    const d = await r.json();
+    if (d.meals?.[0]?.strMealThumb) return d.meals[0].strMealThumb + "/preview";
+  } catch {}
+
+  // 2. Wikipedia REST API — real photos for well-known dishes (Adobo, Sinigang, Ramen, etc.)
+  try {
+    const r = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(name)}`);
+    const d = await r.json();
+    if (d.thumbnail?.source) return d.thumbnail.source;
+  } catch {}
+
+  // 3. LoremFlickr — real Flickr food photos as last resort
+  return `https://loremflickr.com/200/200/${encodeURIComponent(name)},food,dish/all`;
+}
+
 function DishPhoto({ name, size = 80 }) {
-  const [src, setSrc] = useState(null);
+  const [src, setSrc]   = useState(null);
   const [tried, setTried] = useState(false);
 
   useEffect(() => {
     if (!name) return;
-    // Try TheMealDB first (has real dish photos for many global recipes)
-    fetch(`https://www.themealdb.com/api/json/v1/1/search.php?s=${encodeURIComponent(name)}`)
-      .then(r => r.json())
-      .then(data => {
-        const thumb = data.meals?.[0]?.strMealThumb;
-        // If TheMealDB found it, use its photo; otherwise fall back to LoremFlickr
-        setSrc(thumb
-          ? thumb + "/preview"
-          : `https://loremflickr.com/${size}/${size}/${encodeURIComponent(name)},food`
-        );
-      })
-      .catch(() => {
-        setSrc(`https://loremflickr.com/${size}/${size}/${encodeURIComponent(name)},food`);
-      })
-      .finally(() => setTried(true));
-  }, [name, size]);
+    fetchDishPhoto(name).then(url => { setSrc(url); setTried(true); });
+  }, [name]);
 
-  const boxStyle = { width:size, height:size, borderRadius:14, flexShrink:0, overflow:"hidden" };
+  const boxStyle = { width:size, height:size, borderRadius:14, flexShrink:0, overflow:"hidden", background:C.terraLight };
 
   if (!tried) return (
-    <div style={{ ...boxStyle, background:C.terraLight, display:"flex", alignItems:"center", justifyContent:"center" }}>
+    <div style={{ ...boxStyle, display:"flex", alignItems:"center", justifyContent:"center" }}>
       <div style={{ width:22, height:22, borderRadius:"50%", border:`3px solid ${C.terra}`, borderTopColor:"transparent", animation:"spin 0.8s linear infinite" }} />
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   );
 
-  return (
-    <img
-      src={src}
-      alt={name}
-      onError={e => { e.target.style.display = "none"; }}
-      style={{ ...boxStyle, objectFit:"cover", display:"block" }}
-    />
-  );
+  if (!src) return <div style={{ ...boxStyle, display:"flex", alignItems:"center", justifyContent:"center", fontSize:32 }}>🍽️</div>;
+
+  return <img src={src} alt={name} style={{ ...boxStyle, objectFit:"cover", display:"block", width:size, height:size }} />;
 }
 
 function RecipeCard({ recipe, onSave, saved, isPremium, onUpgrade }) {

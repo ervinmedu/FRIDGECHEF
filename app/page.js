@@ -1036,6 +1036,16 @@ function FridgeChefApp() {
     getFavorites(user.uid).then(setFavorites).catch(console.error);
     getMealPlan(user.uid).then(setPlanner).catch(console.error);
     getUserStatus(user.uid).then(s => {
+      // Dev override: localStorage.setItem('fc_trial_test', '6') = simulate day 6
+      const testDay = parseInt(localStorage.getItem("fc_trial_test") || "0");
+      if (testDay > 0 && !s.isPremium) {
+        const daysLeft = Math.max(0, 7 - testDay);
+        setIsPremium(false);
+        setInTrial(daysLeft > 0);
+        setTrialDaysLeft(daysLeft);
+        setTrialExpired(daysLeft === 0);
+        return;
+      }
       setIsPremium(s.isPremium);
       setInTrial(s.inTrial);
       setTrialDaysLeft(s.trialDaysLeft);

@@ -472,12 +472,7 @@ function AppHeader({ user, signIn, logOut, isPremium, onOpenPremium, currency = 
               padding:"4px 12px", fontSize:12, fontWeight:700,
               display:"flex", alignItems:"center", gap:5,
             }}>👑 PRO</div>
-          ) : (
-            <button onClick={onOpenPremium} style={{
-              background:"rgba(196,98,45,0.25)", color:C.terra, border:`1px solid ${C.terra}`,
-              borderRadius:20, padding:"5px 12px", fontSize:12, fontWeight:600, cursor:"pointer",
-            }}>✨ {currency.symbol}{currency.monthly}/mo</button>
-          )}
+          ) : null}
           <div style={{ position:"relative" }}>
             <div onClick={() => setMenuOpen(!menuOpen)} style={{
               width:36, height:36, borderRadius:"50%", cursor:"pointer",

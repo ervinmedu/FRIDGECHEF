@@ -265,6 +265,7 @@ function NutritionBar({ label, value, unit, color, max }) {
 // ─── Recipe Card ──────────────────────────────────────────────
 function RecipeCard({ recipe, onSave, saved, isPremium, onUpgrade }) {
   const [open, setOpen] = useState(false);
+  const [imgOk, setImgOk] = useState(true);
   const nutrition = recipe.nutrition;
 
   return (
@@ -273,6 +274,14 @@ function RecipeCard({ recipe, onSave, saved, isPremium, onUpgrade }) {
       overflow:"hidden", marginBottom:12,
       boxShadow:"0 2px 14px rgba(44,26,14,0.06)",
     }}>
+      {imgOk && (
+        <img
+          src={`https://source.unsplash.com/400x180/?${encodeURIComponent(recipe.name)},food`}
+          alt={recipe.name}
+          onError={() => setImgOk(false)}
+          style={{ width:"100%", height:150, objectFit:"cover", display:"block" }}
+        />
+      )}
       <div onClick={() => setOpen(!open)} style={{
         padding:"16px", cursor:"pointer",
         display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:10,
@@ -499,13 +508,26 @@ function TabBar({ tab, setTab }) {
 }
 
 // ─── Ingredient Chip ──────────────────────────────────────────
+function foodImg(query, size = 40) {
+  return `https://source.unsplash.com/${size}x${size}/?${encodeURIComponent(query)},food`;
+}
+
 function IngredientChip({ label, onRemove }) {
+  const [imgOk, setImgOk] = useState(true);
   return (
     <span style={{
-      display:"inline-flex", alignItems:"center", gap:5,
+      display:"inline-flex", alignItems:"center", gap:6,
       background:C.terraLight, color:C.terra, border:`1px solid ${C.border}`,
-      borderRadius:20, padding:"5px 12px", fontSize:13, fontWeight:500,
+      borderRadius:20, padding:"4px 10px 4px 4px", fontSize:13, fontWeight:500,
     }}>
+      {imgOk && (
+        <img
+          src={foodImg(label)}
+          alt=""
+          onError={() => setImgOk(false)}
+          style={{ width:26, height:26, borderRadius:"50%", objectFit:"cover", flexShrink:0 }}
+        />
+      )}
       {label}
       <button onClick={onRemove} style={{
         background:"none", border:"none", cursor:"pointer",

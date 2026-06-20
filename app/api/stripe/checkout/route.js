@@ -2,11 +2,11 @@ import Stripe from "stripe";
 
 export const dynamic = "force-dynamic";
 
-if (!process.env.STRIPE_SECRET_KEY) throw new Error("Missing STRIPE_SECRET_KEY");
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-
 export async function POST(req) {
+  if (!process.env.STRIPE_SECRET_KEY) {
+    return Response.json({ error: "Server not configured" }, { status: 500 });
+  }
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
   try {
     const { priceId, userId, userEmail } = await req.json();
     if (!priceId || !userId) {

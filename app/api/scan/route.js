@@ -1,13 +1,13 @@
 import Anthropic from "@anthropic-ai/sdk";
 
-if (!process.env.ANTHROPIC_API_KEY) throw new Error("Missing ANTHROPIC_API_KEY");
-
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
 const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
 
 export async function POST(req) {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return Response.json({ error: "Server not configured" }, { status: 500 });
+  }
+  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   try {
     const { imageBase64, mediaType } = await req.json();
 

@@ -2,11 +2,6 @@ import Stripe from "stripe";
 
 export const dynamic = "force-dynamic";
 
-if (!process.env.STRIPE_SECRET_KEY)  throw new Error("Missing STRIPE_SECRET_KEY");
-if (!process.env.STRIPE_WEBHOOK_SECRET) throw new Error("Missing STRIPE_WEBHOOK_SECRET");
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-
 async function updateFirestore(userId, data) {
   const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
   if (!projectId) throw new Error("Missing NEXT_PUBLIC_FIREBASE_PROJECT_ID");
@@ -33,6 +28,10 @@ async function updateFirestore(userId, data) {
 }
 
 export async function POST(req) {
+  if (!process.env.STRIPE_SECRET_KEY || !process.env.STRIPE_WEBHOOK_SECRET) {
+    return new Response("Server not configured", { status: 500 });
+  }
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
   const body = await req.text();
   const sig  = req.headers.get("stripe-signature");
 

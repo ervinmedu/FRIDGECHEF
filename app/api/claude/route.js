@@ -1,10 +1,10 @@
 import Anthropic from "@anthropic-ai/sdk";
 
-if (!process.env.ANTHROPIC_API_KEY) throw new Error("Missing ANTHROPIC_API_KEY");
-
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
 export async function POST(req) {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return Response.json({ error: "Server not configured" }, { status: 500 });
+  }
+  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   try {
     const { prompt, system, maxTokens } = await req.json();
 

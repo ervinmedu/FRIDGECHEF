@@ -328,8 +328,6 @@ function RecipeCard({ recipe, onSave, saved, isPremium, onUpgrade }) {
         padding:"16px", cursor:"pointer",
         display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:10,
       }}>
-        {/* Dish thumbnail — real photo from TheMealDB */}
-        <DishPhoto name={recipe.name} size={80} />
         <div style={{ flex:1 }}>
           <div style={{
             fontFamily:"'Playfair Display',serif", fontSize:17, fontWeight:700,
@@ -389,15 +387,10 @@ function RecipeCard({ recipe, onSave, saved, isPremium, onUpgrade }) {
             </div>
           )}
           <CardSection label="Ingredients">
-            <div style={{ display:"flex", gap:12, alignItems:"flex-start" }}>
-              <div style={{ flex:1, display:"flex", flexDirection:"column", gap:6 }}>
-                {recipe.ingredients?.map((ing,i) => (
-                  <RecipeIngredientRow key={i} text={ing} />
-                ))}
-              </div>
-              <div style={{ flexShrink:0 }}>
-                <DishPhoto name={recipe.name} size={120} />
-              </div>
+            <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+              {recipe.ingredients?.map((ing,i) => (
+                <RecipeIngredientRow key={i} text={ing} />
+              ))}
             </div>
           </CardSection>
           <CardSection label="Steps">

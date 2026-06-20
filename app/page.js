@@ -508,8 +508,10 @@ function TabBar({ tab, setTab }) {
 }
 
 // ─── Ingredient Chip ──────────────────────────────────────────
-function foodImg(query, size = 40) {
-  return `https://source.unsplash.com/${size}x${size}/?${encodeURIComponent(query)},food`;
+function ingredientImgUrl(label) {
+  // TheMealDB has a free ingredient image library — no API key needed
+  const name = label.trim().replace(/\s+/g, "%20");
+  return `https://www.themealdb.com/images/ingredients/${name}-Small.png`;
 }
 
 function IngredientChip({ label, onRemove }) {
@@ -520,13 +522,15 @@ function IngredientChip({ label, onRemove }) {
       background:C.terraLight, color:C.terra, border:`1px solid ${C.border}`,
       borderRadius:20, padding:"4px 10px 4px 4px", fontSize:13, fontWeight:500,
     }}>
-      {imgOk && (
+      {imgOk ? (
         <img
-          src={foodImg(label)}
+          src={ingredientImgUrl(label)}
           alt=""
           onError={() => setImgOk(false)}
-          style={{ width:26, height:26, borderRadius:"50%", objectFit:"cover", flexShrink:0 }}
+          style={{ width:26, height:26, borderRadius:"50%", objectFit:"cover", flexShrink:0, background:"#fff" }}
         />
+      ) : (
+        <span style={{ fontSize:16, flexShrink:0 }}>🥬</span>
       )}
       {label}
       <button onClick={onRemove} style={{

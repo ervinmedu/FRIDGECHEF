@@ -996,8 +996,32 @@ function FridgeChefApp() {
   const [trialExpired, setTrialExpired]   = useState(false);
   const [showPremium, setShowPremium] = useState(false);
 
-  // All features unlocked during trial OR with paid premium
+  // Feature gates
   const isUnlocked = isPremium || inTrial;
+  // Nutrition: only day 1 of trial (trialDaysLeft===7 means first 24h) or paid premium
+  const isNutritionUnlocked = isPremium || (inTrial && trialDaysLeft === 7);
+
+  // Daily usage counter for voice & photo (3/day during trial)
+  function getTodayKey(type) {
+    return `fc_${type}_${new Date().toISOString().slice(0,10)}`;
+  }
+  function getDailyUsage(type) {
+    return parseInt(localStorage.getItem(getTodayKey(type)) || "0");
+  }
+  function incrementDailyUsage(type) {
+    const key = getTodayKey(type);
+    localStorage.setItem(key, String(getDailyUsage(type) + 1));
+  }
+  const DAILY_TRIAL_LIMIT = 3;
+  function canUseFeature(type) {
+    if (isPremium) return true;           // premium = unlimited
+    if (!inTrial) return false;            // trial expired
+    return getDailyUsage(type) < DAILY_TRIAL_LIMIT;
+  }
+  function remainingUses(type) {
+    if (isPremium) return "∞";
+    return Math.max(0, DAILY_TRIAL_LIMIT - getDailyUsage(type));
+  }
   const [listening, setListening]     = useState(false);
   const [handsFree, setHandsFree]     = useState(false);
   const [voiceIngredient, setVoiceIngredient] = useState("");
@@ -1066,7 +1090,12 @@ function FridgeChefApp() {
 
   // ── Voice capture (Premium) ───────────────────────────────────
   const startVoice = useCallback((continuous = false) => {
-    if (!isUnlocked) { setShowPremium(true); return; }
+    if (!canUseFeature("voice")) {
+      if (!inTrial && !isPremium) { setShowPremium(true); return; }
+      alert(`You've used all ${DAILY_TRIAL_LIMIT} free voice captures for today. Come back tomorrow or upgrade to Premium for unlimited.`);
+      return;
+    }
+    incrementDailyUsage("voice");
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) { alert("Voice not supported in this browser. Try Chrome."); return; }
     const addVoice = (val) => {
@@ -1142,7 +1171,12 @@ function FridgeChefApp() {
   // ── Photo scan (Premium — real Claude vision) ─────────────────
   const [scanning, setScanning] = useState(false);
   const handlePhotoScan = () => {
-    if (!isUnlocked) { setShowPremium(true); return; }
+    if (!canUseFeature("photo")) {
+      if (!inTrial && !isPremium) { setShowPremium(true); return; }
+      alert(`You've used all ${DAILY_TRIAL_LIMIT} free photo scans for today. Come back tomorrow or upgrade to Premium for unlimited.`);
+      return;
+    }
+    incrementDailyUsage("photo");
     const fileInput = document.createElement("input");
     fileInput.type = "file"; fileInput.accept = "image/*";
     fileInput.onchange = async (e) => {
@@ -1187,7 +1221,7 @@ function FridgeChefApp() {
     let mi = 0; setLoadingMsg(msgs[0]);
     intervalRef.current = setInterval(() => { mi=(mi+1)%msgs.length; setLoadingMsg(msgs[mi]); }, 1500);
     try {
-      const nutritionRequest = isUnlocked
+      const nutritionRequest = isNutritionUnlocked
         ? `Include "nutrition":{"calories":0,"protein":0,"carbs":0,"fat":0} per serving for each recipe.`
         : "";
       const cuisineInstruction = cuisine !== "any"
@@ -1196,7 +1230,7 @@ function FridgeChefApp() {
       const text = await callClaude(
         `I have: ${ingredients.join(", ")}. Diet: ${diet}. Max time: ${maxTime} min. ${cuisineInstruction}
 Return a JSON array of exactly 3 recipes. Each item MUST follow this format exactly:
-{"name":"","prepTime":"","difficulty":"Easy","ingredients":[],"steps":[],"missingIngredients":[],"substitutions":"${isUnlocked ? `","nutrition":{"calories":0,"protein":0,"carbs":0,"fat":0}` : '"'}
+{"name":"","prepTime":"","difficulty":"Easy","ingredients":[],"steps":[],"missingIngredients":[],"substitutions":"${isNutritionUnlocked ? `","nutrition":{"calories":0,"protein":0,"carbs":0,"fat":0}` : '"'}
 ${nutritionRequest}
 Budget-friendly. Use provided ingredients. Return ONLY the JSON array, no markdown.`,
         "You are a home chef AI. Return ONLY valid JSON with no markdown or explanation."
@@ -1344,7 +1378,7 @@ Keep it budget-friendly.`,
 
       <AppHeader
         user={user} signIn={signIn} logOut={logOut}
-        isPremium={isUnlocked} onOpenPremium={() => setShowPremium(true)}
+        isPremium={isNutritionUnlocked} onOpenPremium={() => setShowPremium(true)}
         currency={currency}
       />
 
@@ -1498,10 +1532,10 @@ Keep it budget-friendly.`,
                   }}
                 />
                 <button
-                  onClick={() => isUnlocked ? startVoice(false) : setShowPremium(true)}
-                  title={isUnlocked ? "Voice input" : "Premium: voice input"}
+                  onClick={() => startVoice(false)}
+                  title={canUseFeature("voice") ? "Voice input" : "Premium: voice input"}
                   style={{
-                    background: listening ? C.terra : (isUnlocked ? C.terraLight : "#f0ece8"),
+                    background: listening ? C.terra : (canUseFeature("voice") ? C.terraLight : "#f0ece8"),
                     border:`1.5px solid ${listening ? C.terra : C.border}`,
                     borderRadius:12, width:44, cursor:"pointer", fontSize:18,
                     display:"flex", alignItems:"center", justifyContent:"center",
@@ -1509,7 +1543,7 @@ Keep it budget-friendly.`,
                   }}
                 >
                   🎤
-                  {!isUnlocked && <span style={{ position:"absolute", top:2, right:2, fontSize:8 }}>🔒</span>}
+                  {!isPremium && !inTrial && <span style={{ position:"absolute", top:2, right:2, fontSize:8 }}>🔒</span>}
                 </button>
                 <button onClick={addIngredient} style={{
                   background:C.terra, color:"#fff", border:"none",
@@ -1521,27 +1555,46 @@ Keep it budget-friendly.`,
               {/* Photo scan + Hands-free */}
               <div style={{ display:"flex", gap:8, marginBottom:12 }}>
                 <button onClick={handlePhotoScan} disabled={scanning} style={{
-                  flex:1, background: isUnlocked ? C.cream : "#f0ece8",
+                  flex:1, background: canUseFeature("photo") ? C.cream : "#f0ece8",
                   border:`1.5px solid ${scanning ? C.terra : C.border}`, borderRadius:12, padding:"9px 0",
                   fontSize:13, fontWeight:600, cursor: scanning ? "wait" : "pointer",
-                  color: isUnlocked ? C.espresso : C.muted,
-                  display:"flex", alignItems:"center", justifyContent:"center", gap:6,
+                  color: canUseFeature("photo") ? C.espresso : C.muted,
+                  display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:2,
                 }}>
-                  {scanning ? "🔍 Scanning…" : "📷 Photo scan"}
-                  {!isUnlocked && !scanning && <span style={{ fontSize:10 }}>🔒</span>}
+                  <span style={{ display:"flex", alignItems:"center", gap:6 }}>
+                    {scanning ? "🔍 Scanning…" : "📷 Photo scan"}
+                    {!isPremium && !inTrial && !scanning && <span style={{ fontSize:10 }}>🔒</span>}
+                  </span>
+                  {inTrial && !isPremium && !scanning && (
+                    <span style={{ fontSize:10, color: remainingUses("photo") === 0 ? "#B71C1C" : C.muted, fontWeight:500 }}>
+                      {remainingUses("photo")}/3 left today
+                    </span>
+                  )}
                 </button>
                 <button onClick={() => {
-                  if (!isUnlocked) { setShowPremium(true); return; }
+                  if (!canUseFeature("voice")) {
+                    if (!inTrial && !isPremium) { setShowPremium(true); return; }
+                    alert(`You've used all ${DAILY_TRIAL_LIMIT} free voice captures for today. Come back tomorrow or upgrade.`);
+                    return;
+                  }
+                  incrementDailyUsage("voice");
                   setHandsFree(true); startVoice(true);
                 }} style={{
-                  flex:1, background: handsFree ? C.terraLight : (isUnlocked ? C.cream : "#f0ece8"),
+                  flex:1, background: handsFree ? C.terraLight : (canUseFeature("voice") ? C.cream : "#f0ece8"),
                   border:`1.5px solid ${handsFree ? C.terra : C.border}`, borderRadius:12, padding:"9px 0",
                   fontSize:13, fontWeight:600, cursor:"pointer",
-                  color: handsFree ? C.terra : (isUnlocked ? C.espresso : C.muted),
-                  display:"flex", alignItems:"center", justifyContent:"center", gap:6,
+                  color: handsFree ? C.terra : (canUseFeature("voice") ? C.espresso : C.muted),
+                  display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:2,
                 }}>
-                  🗣 Hands-free
-                  {!isUnlocked && <span style={{ fontSize:10 }}>🔒</span>}
+                  <span style={{ display:"flex", alignItems:"center", gap:6 }}>
+                    🗣 Hands-free
+                    {!isPremium && !inTrial && <span style={{ fontSize:10 }}>🔒</span>}
+                  </span>
+                  {inTrial && !isPremium && (
+                    <span style={{ fontSize:10, color: remainingUses("voice") === 0 ? "#B71C1C" : C.muted, fontWeight:500 }}>
+                      {remainingUses("voice")}/3 left today
+                    </span>
+                  )}
                 </button>
               </div>
 
@@ -1578,7 +1631,7 @@ Keep it budget-friendly.`,
               <RecipeCard
                 key={i} recipe={r}
                 onSave={toggleFavorite} saved={isFav(r)}
-                isPremium={isUnlocked} onUpgrade={() => setShowPremium(true)}
+                isPremium={isNutritionUnlocked} onUpgrade={() => setShowPremium(true)}
               />
             ))}
 
@@ -1700,7 +1753,7 @@ Keep it budget-friendly.`,
                   <RecipeCard
                     key={i} recipe={r}
                     onSave={toggleFavorite} saved={true}
-                    isPremium={isUnlocked} onUpgrade={() => setShowPremium(true)}
+                    isPremium={isNutritionUnlocked} onUpgrade={() => setShowPremium(true)}
                   />
                 ))}
               </>

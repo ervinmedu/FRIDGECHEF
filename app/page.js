@@ -716,7 +716,7 @@ function HardPaywall({ onUpgrade, currency }) {
       }}>
         <div style={{ color: C.gold, fontSize: 14, marginBottom: 4 }}>★★★★★</div>
         <div style={{ color: "rgba(255,255,255,0.7)", fontSize: 13, lineHeight: 1.5 }}>
-          "FridgeChef saves me $200/month on groceries. I never waste food anymore."
+          &quot;FridgeChef saves me $200/month on groceries. I never waste food anymore.&quot;
         </div>
         <div style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, marginTop: 6 }}>— Maria K., home cook</div>
       </div>
@@ -1138,7 +1138,8 @@ function FridgeChefApp() {
     rec.onend   = () => { setListening(false); setHandsFree(false); setVoiceIngredient(""); };
     recognitionRef.current = rec;
     rec.start();
-  }, [isUnlocked]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Stop voice recognition on unmount
   useEffect(() => () => { recognitionRef.current?.stop(); }, []);

@@ -49,6 +49,19 @@ export function AuthProvider({ children }) {
       return;
     }
 
+    // On mobile use redirect (popups are blocked by mobile browsers)
+    const isMobile = typeof window !== "undefined" && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+    if (isMobile) {
+      try {
+        await signInWithRedirect(auth, googleProvider);
+      } catch (err) {
+        setAuthError("Sign-in failed. Please try again.");
+        console.error("Google sign-in redirect error:", err);
+      }
+      return;
+    }
+
     try {
       await signInWithPopup(auth, googleProvider);
     } catch (err) {
